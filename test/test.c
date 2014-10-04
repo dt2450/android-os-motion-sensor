@@ -7,12 +7,26 @@
 
 
 #define __NR_set_acceleration	378
+#define __NR_accevt_create	379
+#define __NR_accevt_wait	380
+#define __NR_accevt_signal	381
+#define __NR_accevt_destroy	382
 
 struct dev_acceleration {
 	int x; /* acceleration along X-axis */
 	int y; /* acceleration along Y-axis */
 	int z; /* acceleration along Z-axis */
-}; 
+};
+
+struct acc_motion {
+
+     unsigned int dlt_x; /* +/- around X-axis */
+     unsigned int dlt_y; /* +/- around Y-axis */
+     unsigned int dlt_z; /* +/- around Z-axis */
+     
+     unsigned int frq;   /* Number of samples that satisfies:
+                          sum_each_sample(dlt_x + dlt_y + dlt_z) > NOISE */
+};
 
 int validate_input(int argc, char **argv)
 {
@@ -27,15 +41,13 @@ int main(int argc, char **argv)
 		return returnValue;
 
 	struct dev_acceleration *acc = (struct dev_acceleration *) malloc(sizeof(struct dev_acceleration));
+	printf("Syscall returned: %d.\n", syscall(__NR_set_acceleration, acc));	
 
-	
-	int r = syscall(__NR_set_acceleration, acc);
+	struct acc_motion *motion = (struct acc_motion *) malloc(sizeof(struct acc_motion));
+	printf("Syscall returned: %d.\n", syscall(__NR_accevt_create, motion));	
+	printf("Syscall returned: %d.\n", syscall(__NR_accevt_wait, 0));	
+	printf("Syscall returned: %d.\n", syscall(__NR_accevt_signal, motion));	
+	printf("Syscall returned: %d.\n", syscall(__NR_accevt_destroy, 0));	
 
-	if (r == -1) {
-		printf("error : %s\n", strerror(errno));
-		return -1;
-	}
-
-	printf("syscall returned: %d\n", r);
 	return 0;
 }
