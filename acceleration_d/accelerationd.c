@@ -12,6 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <hardware/hardware.h>
 #include <hardware/sensors.h> /* <-- This is a good place to look! */
 #include "../flo-kernel/include/linux/akm8975.h" 
@@ -39,6 +40,7 @@
 	#define dbg(fmt, ...)
 #endif
 
+static struct dev_acceleration *acc = NULL;
 static int effective_sensor;
 
 /* helper functions which you should use */
@@ -64,7 +66,10 @@ static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
 		dbg("Acceleration: x= %0.2f, y= %0.2f, "
 			"z= %0.2f\n", buffer[i].acceleration.x,
 			buffer[i].acceleration.y, buffer[i].acceleration.z);
-
+		acc->x = (int) (buffer[i].acceleration.x * 100);
+		acc->y = (int) (buffer[i].acceleration.y * 100);
+		acc->z = (int) (buffer[i].acceleration.z * 100);
+		syscall(__NR_set_acceleration, acc);
 	}
 	return 0;
 }
@@ -77,6 +82,8 @@ int main(int argc, char **argv)
 	struct sensors_module_t *sensors_module = NULL;
 	struct sensors_poll_device_t *sensors_device = NULL;
 
+	pid_t pid, sid;
+
 	printf("Opening sensors...\n");
 	if (open_sensors(&sensors_module,
 			 &sensors_device) < 0) {
@@ -88,8 +95,33 @@ int main(int argc, char **argv)
 
 	/* Fill in daemon implementation around here */
 	printf("turn me into a daemon!\n");
+	acc = (struct dev_acceleration *) malloc(sizeof(struct dev_acceleration));
+	if (acc == NULL) {
+		perror("accelerationd: Unable to allocate memory.");
+		exit(EXIT_FAILURE);
+	}
+
+	pid = fork();
+	if (pid < 0) {
+		perror("accelerationd: could not fork.");
+		exit(EXIT_FAILURE);
+	}
+	if (pid > 0)
+		exit(EXIT_SUCCESS);
+
+	sid = setsid();
+	if (sid < 0) {
+		perror("accelerationd: could not create new session.");
+		exit(EXIT_FAILURE);
+	}
+
+	close(STDIN_FILENO);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+	
 	while (1) {
 		poll_sensor_data(sensors_device);
+		sleep(5);
 	}
 
 	return EXIT_SUCCESS;
