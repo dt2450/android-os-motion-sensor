@@ -19,6 +19,23 @@
 
 SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration)
 {
+	struct dev_acceleration *k_acc = NULL;
+	
+	if (acceleration == NULL) {
+		pr_err("set_acceleration: acceleration is NULL\n");
+		return -EINVAL;
+	}
+
+	k_acc = kmalloc(sizeof(struct dev_acceleration), GFP_KERNEL);
+	if (copy_from_user(k_acc, acceleration, sizeof(struct dev_acceleration))) {
+		pr_err("set_acceleration: copy_from_user failed.\n");
+		kfree(k_acc);
+		return -EFAULT;
+	}
+
+	printk("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
+
+	kfree(k_acc);
 	return 378;
 }
 
