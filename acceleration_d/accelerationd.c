@@ -121,7 +121,7 @@ int main(int argc, char **argv)
 	
 	while (1) {
 		poll_sensor_data(sensors_device);
-		sleep(5);
+		usleep(TIME_INTERVAL * 1000);
 	}
 
 	return EXIT_SUCCESS;
