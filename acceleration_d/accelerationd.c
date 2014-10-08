@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -121,7 +122,11 @@ int main(int argc, char **argv)
 	
 	while (1) {
 		poll_sensor_data(sensors_device);
-		usleep(TIME_INTERVAL * 1000);
+		if (!usleep(TIME_INTERVAL * 1000)) {
+			perror("accelerationd: couldn't sleep error is: ");
+			perror(strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	return EXIT_SUCCESS;
