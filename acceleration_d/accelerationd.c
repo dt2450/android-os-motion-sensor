@@ -122,11 +122,13 @@ int main(int argc, char **argv)
 	
 	while (1) {
 		poll_sensor_data(sensors_device);
-		if (!usleep(TIME_INTERVAL * 1000)) {
+		
+		if (usleep(TIME_INTERVAL * 1000) == -1) {
 			perror("accelerationd: couldn't sleep error is: ");
 			perror(strerror(errno));
 			exit(EXIT_FAILURE);
 		}
+		
 	}
 
 	return EXIT_SUCCESS;
