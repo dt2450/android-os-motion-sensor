@@ -5,7 +5,7 @@
 
 #include <linux/uaccess.h>
 #include <linux/slab.h>
-
+#include <linux/list.h>
 #include <linux/acceleration.h>
 
 /*
@@ -17,10 +17,46 @@
  * syscall number 378
  */
 
+static struct acc_motion *motion = NULL;
+static int window_index = -1;
+
+static int init_window(void)
+{
+	if (motion == NULL) {
+		motion = kmalloc(sizeof (struct acc_motion) * 20, GFP_KERNEL);
+		if (motion == NULL) {
+			pr_err("set_acceleration: init_window: could not initialize window.\n");
+			return -1;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+static int add_to_window(struct dev_acceleration *acc)
+{
+	struct acc_motion acc_m;
+	
+	if (window_index == 19)
+		window_index = -1;
+
+	acc_m.dlt_x = 1;
+	acc_m.dlt_y = 1;
+	acc_m.dlt_z = 1;
+	acc_m.frq = 1;
+	motion[window_index] = acc_m;
+	
+	window_index++;
+	motion[window_index] = acc_m;
+
+	return 0;
+}
+
 SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
 	
+	init_window();	
 	if (acceleration == NULL) {
 		pr_err("set_acceleration: acceleration is NULL\n");
 		return -EINVAL;
@@ -34,6 +70,8 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 	}
 
 	printk("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
+	add_to_window(k_acc);
+	printk("Window has %d entries.\n", window_index+1);
 
 	kfree(k_acc);
 	return 378;
