@@ -7,6 +7,7 @@
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/acceleration.h>
+#include <linux/mylist.h>
 
 /*
  * Set current device acceleration in the kernel.
@@ -17,38 +18,10 @@
  * syscall number 378
  */
 
-static struct acc_motion *motion = NULL;
-static int window_index = -1;
+static struct acc_motion **k_acc_motion = NULL;
+static int counter;
 
-static int init_window(void)
-{
-	if (motion == NULL) {
-		motion = kmalloc(sizeof (struct acc_motion) * 20, GFP_KERNEL);
-		if (motion == NULL) {
-			pr_err("set_acceleration: init_window: could not initialize window.\n");
-			return -1;
-		}
-		return 1;
-	}
-	return 0;
-}
-
-static int add_to_window(struct dev_acceleration *acc)
-{
-	struct acc_motion acc_m;
-	
-	if (window_index == 19)
-		window_index = -1;
-
-	acc_m.dlt_x = 1;
-	acc_m.dlt_y = 1;
-	acc_m.dlt_z = 1;
-	acc_m.frq = 1;
-	motion[window_index] = acc_m;
-	
-	window_index++;
-	motion[window_index] = acc_m;
-
+static int init_event_list(){
 	return 0;
 }
 
@@ -56,7 +29,11 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 {
 	struct dev_acceleration *k_acc = NULL;
 	
-	init_window();	
+	int returnVal = init_event_list();
+	if (returnVal == -1) {
+		pr_err("error: Not enough memory!");
+		return -ENOMEM;
+	}
 	if (acceleration == NULL) {
 		pr_err("set_acceleration: acceleration is NULL\n");
 		return -EINVAL;
@@ -85,8 +62,27 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
  */
  
 SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
-{
-	return 379;
+{	counter += 1;
+	k_acc_motion = krealloc(k_acc_motion, (counter * sizeof(struct acc_motion *)),
+				 GFP_KERNEL);
+	if (k_acc_motion == NULL ) {
+		pr_err("error: Not enough memory!");
+		return -ENOMEM;
+	}
+	struct acc_motion *currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
+	if (currentEvent == NULL) {
+		pr_err("error: Not enough memory!");
+		return -ENOMEM;
+	}
+	if (copy_from_user(acc_motion, acceleration, sizeof(struct acc_motion))) {
+		pr_err("set_acceleration: copy_from_user failed.\n");
+		kfree(acc_motion);
+		return -EFAULT;
+	}
+	
+	*(k_acc_motion + counter - 1) = currentEvent;
+	
+	return counter;
 }
  
 /* Block a process on an event.
