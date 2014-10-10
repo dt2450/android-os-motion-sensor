@@ -25,8 +25,9 @@ static int counter;
 SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
+	
 	int returnVal;
-
+	
 	returnVal = init_event_q();
 	if (returnVal == -1) {
 		pr_err("error: Not enough memory!");
@@ -36,7 +37,8 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 	if (returnVal == -1) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
-	}
+        }
+
 	if (acceleration == NULL) {
 		pr_err("set_acceleration: acceleration is NULL\n");
 		return -EINVAL;
@@ -100,8 +102,13 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 	struct acc_motion *currentEvent = NULL;
 	if(event_id <= counter)
 		currentEvent = *(k_acc_motion + event_id - 1);
-	printk("x=%d, y=%d, z=%d\n", currentEvent->dlt_x, currentEvent->dlt_y,
-	 currentEvent->dlt_z);
+	if (currentEvent == NULL) {
+		printk("event Id not found");
+		return -EFAULT;
+	} else {
+		printk("x=%d, y=%d, z=%d\n", currentEvent->dlt_x, currentEvent->dlt_y,
+		 currentEvent->dlt_z);
+	}
 	return event_id;
 }
  
@@ -127,6 +134,11 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
  
 SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 {
-	
-	return 382;
+	struct acc_motion *currentEvent = NULL;
+	if (event_id <= counter) {
+		*(k_acc_motion + event_id - 1) = NULL;
+		return 0;
+	} else {
+		return -EFAULT;
+	}
 }
