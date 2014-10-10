@@ -21,15 +21,12 @@
 static struct acc_motion **k_acc_motion = NULL;
 static int counter;
 
-static int init_event_list(){
-	return 0;
-}
 
 SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
 	
-	int returnVal = init_event_list();
+	int returnVal = init_event_q();
 	if (returnVal == -1) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
@@ -47,8 +44,7 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 	}
 
 	printk("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
-	add_to_window(k_acc);
-	printk("Window has %d entries.\n", window_index+1);
+	add_delta_to_list(k_acc);
 
 	kfree(k_acc);
 	return 378;
@@ -62,21 +58,23 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
  */
  
 SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
-{	counter += 1;
+{	
+	struct acc_motion *currentEvent = NULL;
+	counter += 1;
 	k_acc_motion = krealloc(k_acc_motion, (counter * sizeof(struct acc_motion *)),
 				 GFP_KERNEL);
 	if (k_acc_motion == NULL ) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
 	}
-	struct acc_motion *currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
+	currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
 	if (currentEvent == NULL) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
 	}
-	if (copy_from_user(acc_motion, acceleration, sizeof(struct acc_motion))) {
+	if (copy_from_user(currentEvent, acceleration, sizeof(struct acc_motion))) {
 		pr_err("set_acceleration: copy_from_user failed.\n");
-		kfree(acc_motion);
+		kfree(currentEvent);
 		return -EFAULT;
 	}
 	
