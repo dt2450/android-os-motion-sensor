@@ -25,8 +25,14 @@ static int counter;
 SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
-	
-	int returnVal = init_event_q();
+	int returnVal;
+
+	returnVal = init_event_q();
+	if (returnVal == -1) {
+		pr_err("error: Not enough memory!");
+		return -ENOMEM;
+	}
+	returnVal = init_delta_q();
 	if (returnVal == -1) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
