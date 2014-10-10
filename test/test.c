@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 
 	struct dev_acceleration *acc = (struct dev_acceleration *) malloc
 		(sizeof(struct dev_acceleration));
-	printf("Syscall returned: %ld.\n", syscall(__NR_set_acceleration, acc));
+	/*printf("Syscall returned: %ld.\n", syscall(__NR_set_acceleration, acc));*/
 
 	struct acc_motion *motion = (struct acc_motion *) malloc
 		(sizeof(struct acc_motion));
