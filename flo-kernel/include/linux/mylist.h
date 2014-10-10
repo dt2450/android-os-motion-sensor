@@ -1,9 +1,9 @@
 #ifndef __LINUX_MYLIST_H
 #define __LINUX_MYLIST_H
 
-#include <linux/list.h>
+#include <linux/acceleration.h>
 
-struct window_elt
+struct delta_elt
 {
 	int dx;
 	int dy;
@@ -18,7 +18,7 @@ struct event_elt
 	unsigned int frq;
 };
 
-
+void h(void);
 int init_event_q(void);
 int init_delta_q(void);
 int add_delta_to_list(struct dev_acceleration *dev_acc);
