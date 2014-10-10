@@ -91,6 +91,11 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
  
 SYSCALL_DEFINE1(accevt_wait, int, event_id)
 {
+	struct acc_motion *currentEvent = NULL;
+	if(event_id < counter)
+		currentEvent = *(k_acc_motion + event_id - 1);
+	printk("x=%d, y=%d, z=%d\n", currentEvent->dlt_x, currentEvent->dlt_y,
+	 currentEvent->dlt_z);
 	return 380;
 }
  
