@@ -108,14 +108,16 @@ int main(int argc, char **argv)
 	}
 
 	close(STDIN_FILENO);
-        //close(STDOUT_FILENO);
-        //close(STDERR_FILENO);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
 	printf("Opening sensors...\n");
+
 	if (open_sensors(&sensors_module,
 			 &sensors_device) < 0) {
 		printf("open_sensors failed\n");
 		return EXIT_FAILURE;
 	}
+
 	enumerate_sensors(sensors_module);
 
 	while (1) {
