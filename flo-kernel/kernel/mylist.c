@@ -52,12 +52,13 @@ int init_delta_q(void)
 		prev->z = 0;
 	}
 
+	/*
 	pr_info("kfifo_esize: %d\n",  kfifo_esize(&delta_q));
 	pr_info("kfifo_recsize: %d\n", kfifo_recsize(&delta_q));
 	pr_info("kfifo_size: %d\n", kfifo_size(&delta_q));
 	pr_info("kfifo_len: %d\n", kfifo_len(&delta_q));
 	pr_info("kfifo_avail: %d\n", kfifo_avail(&delta_q));
-
+	*/
 	if (delta_q_len == 0) {
 		pr_info("initializing delta_q_head for the 1st time\n");
 		INIT_LIST_HEAD(&delta_q_head);
@@ -145,7 +146,7 @@ int remove_event_from_list(struct event_elt *event)
 	return 0;
 }
 
-int add_deltas(int *DX, int *DY, int *DZ)
+int add_deltas_2(int *DX, int *DY, int *DZ)
 {
 	struct delta_elt delta;
 	int i, j, size, offset, ret;
@@ -202,6 +203,38 @@ void h(void)
 		pr_info("prev is NULL\n");
 	else
 		pr_info("prev is not NULL");
+}
+
+int add_deltas(int *DX, int *DY, int *DZ)
+{
+	struct delta_elt *d;
+	struct list_head *p;
+	int i, j, size, offset, ret;
+	int FRQ = 0;
+
+	*DX = 0;
+	*DY = 0;
+	*DZ = 0;
+	size = sizeof(struct delta_elt);
+	
+	offset = 0;
+	i = 0;
+
+	pr_info("In add_deltas, summing ........\n");
+	list_for_each(p, delta_q_head_ptr) {
+		d = list_entry(p, struct delta_elt, list);
+		pr_info("Elt %d: %d %d %d %d", i, d->dx, d->dy, d->dz, d->frq);
+		*DX += d->dx;
+		*DY += d->dy;
+		*DZ += d->dz;
+		if (d->frq == 1)
+			FRQ += 1;
+		i++;
+	}
+	
+	pr_info("Added %d deltas\n", i);
+
+	return FRQ;
 }
 
 
@@ -262,14 +295,14 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 	delta_q_len++;
 	pr_info("current size of delta_q: %d\n", delta_q_len);
 
-	/*
+	
 	FRQ = add_deltas(&DX, &DY, &DZ);
 	if (FRQ == -1) {
 		return -1;
 	}
 
 	pr_info("Current DX=%d, DY=%d, DZ=%d, FRQ=%d\n", DX, DY, DZ, FRQ);
-	*/
+	
 
         return 0;
 }
