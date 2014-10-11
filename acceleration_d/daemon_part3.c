@@ -31,7 +31,7 @@
 #define SENSORS_TEMPERATURE    (1<<ID_TEMPERATURE)
 
 
-#define __NR_set_acceleration 378
+#define __NR_accevt_signal 381
 
 
 /* set to 1 for a bit of debug output */
@@ -69,7 +69,7 @@ static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
 		acc->x = (int) (buffer[i].acceleration.x * 100);
 		acc->y = (int) (buffer[i].acceleration.y * 100);
 		acc->z = (int) (buffer[i].acceleration.z * 100);
-		syscall(__NR_set_acceleration, acc);
+		syscall(__NR_accevt_signal, acc);
 	}
 	return 0;
 }
