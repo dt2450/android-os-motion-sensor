@@ -106,6 +106,7 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		printk("event Id not found");
 		return -EFAULT;
 	} else {
+		/*block processes on this event id*/
 		printk("x=%d, y=%d, z=%d\n", currentEvent->dlt_x, currentEvent->dlt_y,
 		 currentEvent->dlt_z);
 	}
@@ -137,6 +138,8 @@ SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 	struct acc_motion *currentEvent = NULL;
 	if (event_id <= counter) {
 		*(k_acc_motion + event_id - 1) = NULL;
+		/*TODO: Insert code to kill processes in wait queue
+		and also remove wait quueue*/
 		return 0;
 	} else {
 		return -EFAULT;
