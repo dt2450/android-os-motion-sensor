@@ -14,7 +14,8 @@
 static struct kfifo delta_q;
 static int delta_q_len = 0;
 
-static struct kfifo *event_q = NULL;
+static struct list_head head;
+static struct list_head *head_ptr = NULL;
 static int event_q_len = 0;
 
 static struct dev_acceleration *prev = NULL;
@@ -45,51 +46,79 @@ int init_delta_q(void)
 
 int init_event_q(void)
 {
-        int ret;
-
-        if (event_q == NULL) {
-		event_q = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
-		if (event_q == NULL) {
-			pr_err("init_event_list: could not allocate event.\n");
-			return -1;
-		}
-                ret = kfifo_alloc(event_q, 20 * sizeof(struct acc_motion), GFP_KERNEL);
-                if (ret != 0) {
-                        pr_err("init_event_list: could not allocate events.\n");
-                        return -1;
-                }
-                return 1;
-        }
-        return 0;
+	INIT_LIST_HEAD(&head);
+        head_ptr = &head;
+	return 0;
 }
 
 	 
 int add_event_to_list(struct acc_motion *motion)
 {
-	unsigned int copied;
-
-	if (event_q == NULL) {
-		pr_err("add_event_to_list: event list is NULL.\n");
-		return -1;
-	}
-
+	struct event_elt *event;
+	
 	if (motion == NULL) {
-		pr_err("add_event_to_list: motion is NULL.\n");
+		pr_err("add_event_to_list: motion is NULL\n");
 		return -1;
 	}
 
-	if (kfifo_is_full(event_q)) {
-		pr_err("add_event_to_list: event_q is full\n");
+	event = kmalloc(sizeof(struct event_elt), GFP_KERNEL);
+	if (event == NULL) {
+		pr_err("add_event_to_list: could not allocate event\n");
 		return -1;
 	}
 
-	copied = kfifo_in(event_q, motion, sizeof(struct acc_motion));
-	if (copied != sizeof(struct acc_motion)) {
-		pr_err("add_event_to_list: copied only %u bytes.\n", copied);
+	if (head_ptr == NULL) {
+		pr_err("add_event_to_list: head_ptr is NULL\n");
 		return -1;
 	}
+	
+        event->dx = motion->dlt_x;
+        event->dy = motion->dlt_y;
+        event->dz = motion->dlt_z;
+        event->frq = motion->frq;
+        
+	list_add(&event->list, head_ptr);
+        head_ptr = &(event->list);
+        
 	event_q_len++;
-	pr_info("current size of event_q: %d\n", event_q_len);
+	printk("enqueued %d: %d %d %d %d\n", event_q_len, event->dx, event->dy, event->dz, event->frq);
+	return 0;
+}
+
+int remove_event_from_list(struct event_elt *event)
+{
+        struct list_head *p;
+        struct event_elt *m;
+        int i;
+	
+	if (event == NULL) {
+		pr_err("remove_event_from_list: event is NULL\n");
+		return -1;
+	}
+
+	if (head_ptr == NULL) {
+		pr_err("remove_event_from_list: head_ptr is NULL\n");
+		return -1;
+	}
+
+        printk("Going to delete event %d %d %d %d\n", event->dx, event->dy, event->dz, event->frq);
+
+        if (event_q_len == 0) {
+                pr_err("remove_event_from_list: event queue underflow\n");
+                return -1;
+        }
+
+        //printk("before delete, head_ptr: %x, &event->list= %x\n", (unsigned int)head_ptr, (unsigned int)&event->list);
+        list_del(&event->list);
+	event_q_len--;
+        i = 0;
+        list_for_each(p, head_ptr->next) {
+                m = list_entry(p, struct event_elt, list);
+                printk("Element %d: %d\n", i, m->dx);
+                i++;
+        }
+        //printk("after delete, head_ptr: %x, &event->list= %x\n", (unsigned int)head_ptr, (unsigned int)&event->list);
+
 	return 0;
 }
 
