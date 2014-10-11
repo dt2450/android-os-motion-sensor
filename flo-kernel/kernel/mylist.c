@@ -25,6 +25,7 @@ static int event_q_len = 0;
 
 static struct dev_acceleration *prev = NULL;
 
+/*This will initialize the delta queue*/
 int init_delta_q(void)
 {
 	int ret;
@@ -68,6 +69,7 @@ int init_delta_q(void)
         return 0;
 }
 
+/*Initializes the event queue*/
 int init_event_q(void)
 {
 	INIT_LIST_HEAD(&head);

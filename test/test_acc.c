@@ -15,8 +15,8 @@
 #define __NR_accevt_signal		381
 #define __NR_accevt_destroy		382
 
-int num_processes = DEFAULT_N;
-int timeout_secs = DEFAULT_TIMEOUT_IN_SECS;
+static int num_processes = DEFAULT_N;
+static int timeout_secs = DEFAULT_TIMEOUT_IN_SECS;
 
 #if 0
 struct dev_acceleration {

@@ -106,6 +106,7 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		printk("event Id not found");
 		return -EFAULT;
 	} else {
+		/*block processes on this event id*/
 		printk("x=%d, y=%d, z=%d\n", currentEvent->dlt_x, currentEvent->dlt_y,
 		 currentEvent->dlt_z);
 	}
@@ -124,6 +125,37 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
  
 SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 {
+	struct dev_acceleration *k_acc = NULL;
+	
+	int returnVal;
+	
+	returnVal = init_event_q();
+	if (returnVal == -1) {
+		pr_err("error: Not enough memory!");
+		return -ENOMEM;
+	}
+	returnVal = init_delta_q();
+	if (returnVal == -1) {
+		pr_err("error: Not enough memory!");
+		return -ENOMEM;
+        }
+
+	if (acceleration == NULL) {
+		pr_err("set_acceleration: acceleration is NULL\n");
+		return -EINVAL;
+	}
+
+	k_acc = kmalloc(sizeof(struct dev_acceleration), GFP_KERNEL);
+	if (copy_from_user(k_acc, acceleration, sizeof(struct dev_acceleration))) {
+		pr_err("set_acceleration: copy_from_user failed.\n");
+		kfree(k_acc);
+		return -EFAULT;
+	}
+
+	printk("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
+	add_delta_to_list(k_acc);
+
+	kfree(k_acc);
 	return 381;
 }
 
@@ -137,6 +169,8 @@ SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 	struct acc_motion *currentEvent = NULL;
 	if (event_id <= counter) {
 		*(k_acc_motion + event_id - 1) = NULL;
+		/*TODO: Insert code to kill processes in wait queue
+		and also remove wait quueue*/
 		return 0;
 	} else {
 		return -EFAULT;
