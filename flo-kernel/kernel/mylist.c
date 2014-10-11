@@ -26,6 +26,12 @@ static struct dev_acceleration *prev = NULL;
 /*This will initialize the delta queue*/
 int init_delta_q(void)
 {
+	if (delta_q_len == 0) {
+		pr_info("initializing delta_q_head for the 1st time\n");
+		INIT_LIST_HEAD(&delta_q_head);
+		delta_q_head_ptr = &delta_q_head;
+	}
+
 	if (prev == NULL) {
 		prev = kmalloc(sizeof(struct dev_acceleration), GFP_KERNEL);
 		if (prev == NULL) {
@@ -38,12 +44,6 @@ int init_delta_q(void)
 		prev->z = 0;
 	}
 
-	if (delta_q_len == 0) {
-		pr_info("initializing delta_q_head for the 1st time\n");
-		INIT_LIST_HEAD(&delta_q_head);
-		delta_q_head_ptr = &delta_q_head;
-	}
-	
         return 0;
 }
 
@@ -134,15 +134,12 @@ int add_deltas(int *DX, int *DY, int *DZ)
 {
 	struct delta_elt *d;
 	struct list_head *p;
-	int i, j, size, offset, ret;
+	int i;
 	int FRQ = 0;
 
 	*DX = 0;
 	*DY = 0;
 	*DZ = 0;
-	size = sizeof(struct delta_elt);
-	
-	offset = 0;
 	i = 0;
 
 	pr_info("In add_deltas, summing ........\n");
@@ -186,6 +183,11 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 		return -1;
 	}
 
+	if (prev == NULL) {
+		pr_err("add_delta_to_list: prev is NULL.\n");
+		return -1;
+	}
+
         if (delta_q_len >= 20) {
 		pr_info("delta q is full, will pop one\n");
 		temp = list_first_entry(&delta_q_head, struct delta_elt, list);
@@ -199,14 +201,15 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
         } else {
 		pr_info("delta_q is not full\n");
 	}
-	if (!temp)
-		pr_info("temp is NULL\n");
-	if (!prev)
-		pr_info("prev is NULL");
 
-	temp->dx = dev_acc->x - prev->x + delta_q_len;
+	temp->dx = dev_acc->x - prev->x;
 	temp->dy = dev_acc->y - prev->y;
 	temp->dz = dev_acc->z - prev->z;
+
+	if (temp->dx < 0) temp->dx = -temp->dx;
+	if (temp->dy < 0) temp->dy = -temp->dy;
+	if (temp->dz < 0) temp->dz = -temp->dz;
+
 	if (temp->dx + temp->dy + temp->dz > NOISE)
 		temp->frq = 1;
 
