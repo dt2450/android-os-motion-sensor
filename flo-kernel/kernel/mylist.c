@@ -60,7 +60,7 @@ int init_event_q(void)
 }
 
 	 
-int add_event_to_list(struct acc_motion *motion)
+int add_event_to_list(struct acc_motion *motion, int event_id)
 {
 	struct event_elt *event;
 	
@@ -84,6 +84,7 @@ int add_event_to_list(struct acc_motion *motion)
         event->dy = motion->dlt_y;
         event->dz = motion->dlt_z;
         event->frq = motion->frq;
+	event->id = event_id;
         
 	list_add(&event->list, head_ptr);
         head_ptr = &(event->list);

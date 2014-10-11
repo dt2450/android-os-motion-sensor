@@ -21,12 +21,14 @@ struct event_elt
 	unsigned int dz;
 	unsigned int frq;
 
+	int id;
+
 	struct list_head list;
 };
 
 void h(void);
 int init_event_q(void);
-int add_event_to_list(struct acc_motion *motion);
+int add_event_to_list(struct acc_motion *motion, int event_id);
 int remove_event_from_list(struct event_elt *event);
 
 int init_delta_q(void);
