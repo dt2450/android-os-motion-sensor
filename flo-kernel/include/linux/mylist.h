@@ -9,6 +9,9 @@ struct delta_elt
 	int dx;
 	int dy;
 	int dz;
+	int frq;
+
+	struct list_head list;
 };
 
 struct event_elt
