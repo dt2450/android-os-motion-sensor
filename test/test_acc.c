@@ -6,14 +6,17 @@
 #include <sys/syscall.h>
 #include <errno.h>
 
-#define N_PROC_NUM		 50
-#define __NR_set_acceleration	378
-#define __NR_accevt_create	379
-#define __NR_accevt_wait	380
-#define __NR_accevt_signal	381
-#define __NR_accevt_destroy	382
+#define DEFAULT_N			10
+#define MAX_N				1024
+#define DEFAULT_TIMEOUT_IN_SECS		60
+#define __NR_set_acceleration		378
+#define __NR_accevt_create		379
+#define __NR_accevt_wait		380
+#define __NR_accevt_signal		381
+#define __NR_accevt_destroy		382
 
-int num_processes = N_PROC_NUM;
+int num_processes = DEFAULT_N;
+int timeout_secs = DEFAULT_TIMEOUT_IN_SECS;
 
 #if 0
 struct dev_acceleration {
@@ -29,27 +32,33 @@ struct acc_motion {
 	unsigned int dlt_y; /* +/- around Y-axis */
 	unsigned int dlt_z; /* +/- around Z-axis */
 	unsigned int frq;   /* Number of samples that satisfies:
-			       sum_each_sample(dlt_x + dlt_y + dlt_z) > NOISE */
+			* sum_each_sample(dlt_x + dlt_y + dlt_z) > NOISE
+			*/
 };
 
 int validate_input(int argc, char **argv)
 {
 	if (argc == 1) {
-		printf("Creating default %d number of processes\n",
+		printf("Creating default %d number of processes",
 				num_processes);
-		printf("You can also specify the processes as below:\n");
-		printf("usage: cmd [<num_processes>]\n");
-	} else if (argc != 2) {
+		printf(" for default timeout %d secs\n", timeout_secs);
+		printf("You can also specify the values as below:\n");
+		printf("usage: cmd <num_processes> <timeout_in_secs>\n");
+	} else if (argc != 3) {
 		printf("Incorrect no. of args\n");
-		printf("usage: cmd [<num_processes>]\n");
+		printf("usage: cmd <num_processes> <timeout_in_secs>\n");
 		return -1;
 	} else {
 		num_processes = atoi(argv[1]);
-		if (num_processes < 0) {
-			printf("Incorrect no. of args\n");
-			printf("usage: cmd [<num_processes>]\n");
+		timeout_secs = atoi(argv[2]);
+		if (num_processes < 0 || timeout_secs < 0) {
+			printf("Incorrect args. Please verify again\n");
+			printf(
+			"usage: cmd <num_processes> <timeout_in_secs>\n");
 			return -1;
 		}
+		if (num_processes > MAX_N)
+			num_processes = MAX_N;
 		printf("Creating %d number of processes\n", num_processes);
 	}
 	return 0;
@@ -58,18 +67,41 @@ int validate_input(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	int returnValue = validate_input(argc, argv);
+	int event_id_array[num_processes];
+	int child_pid_array[num_processes];
 	int i = 0;
+
 	if (returnValue == -1)
 		return returnValue;
 
+	memset(&event_id_array, 0, sizeof(event_id_array));
+	memset(&child_pid_array, 0, sizeof(child_pid_array));
+
 	for (i = 0; i < num_processes; i++) {
+		int pipe_fd[2] = {-1};
+
+		if (pipe(pipe_fd) == -1) {
+			printf("Parent process error: %s\n", strerror(errno));
+			//for debugging what if the parent exits and some
+			//children are waiting in the queue forever?
+			exit(-1);
+		}
 		int pid = fork();
+
 		if (pid < 0) {
 			printf("Sorry encountered an error while forking.");
 			printf(" Aborting from here\n");
 			exit(-1);
 		} else if (pid == 0) {
 			/* child process */
+			/* close the read fd */
+			if (close(pipe_fd[0]) == -1) {
+				printf("Process no: %d pid: %d error: %s\n",
+						i+1, getpid(),
+						strerror(errno));
+				exit(-1);
+			}
+
 			int event_id = 0;
 			int motion_type = i%7;
 			struct acc_motion *motion = (struct acc_motion *) malloc
@@ -77,7 +109,7 @@ int main(int argc, char **argv)
 			//for debugging
 			printf("I am child number: %d pid = %d\n", i+1,
 					getpid());
-			switch(motion_type) {
+			switch (motion_type) {
 			case 0:
 				motion->dlt_x = (i+1)*100;
 				motion->dlt_y = 0;
@@ -120,68 +152,77 @@ int main(int argc, char **argv)
 			}
 			/* frequency is taken randomly between 1 to 20 */
 			srand(time(NULL));
-			motion->frq= (rand()%20)+1;
+			motion->frq = (rand()%20)+1;
 			/* create the event with the motion*/
 			event_id = syscall(__NR_accevt_create, motion);
 			//for debugging
 			printf("event id is %d\n", event_id);
+			if (event_id == -1) {
+				printf("1. Process %d encountered error: %s\n",
+						strerror(errno));
+				exit(-1);
+			}
+			if (write(pipe_fd[1], &event_id,
+					sizeof(event_id)) == -1) {
+				printf("2. Process %d encountered error: %s\n",
+						strerror(errno));
+				exit(-1);
+			}
 			//for debugging
-			printf("Syscall returned: %ld.\n",
-					syscall(__NR_accevt_wait, event_id));
-			printf("%d Detected a x:%d y:%d z:%d shake\n",
-					getpid(),
-					motion->dlt_x,
-					motion->dlt_y,
-					motion->dlt_z);
+			if (syscall(__NR_accevt_wait, event_id) != event_id) {
+				printf("3. Process %d encountered error: %s\n",
+						strerror(errno));
+				exit(-1);
+			} else {
+				//for debugging
+				/*
+				printf("%d Detected a x:%d y:%d z:%d shake\n",
+						getpid(),
+						motion->dlt_x,
+						motion->dlt_y,
+						motion->dlt_z);*/
+			}
 			exit(0);
 		} else {
 			/* parent process */
+			child_pid_array[i] = pid;
+			/* close the write fd */
+			if (close(pipe_fd[1]) == -1) {
+				printf("Parent Process error: %s\n",
+						strerror(errno));
+				exit(-1);
+			}
+			if (read(pipe_fd[0], &event_id_array[i],
+				sizeof(event_id_array[i])) == -1) {
+				printf("Parent Process error: %s\n",
+						strerror(errno));
+				exit(-1);
+			}
+			if (close(pipe_fd[0]) == -1) {
+				printf("Parent Process error: %s\n",
+						strerror(errno));
+				exit(-1);
+			}
 		}
 	}
-	return 0;
 
+	/* sleep for sometime and close the opened events after that */
+	sleep(timeout_secs);
+	for (i = 0; i < num_processes; i++) {
+		printf("Saved pid = %d, i = %d, event_id = %d\n",
+				child_pid_array[i], i, event_id_array[i]);
+		//handle this in system call?
+		int status;
+		pid_t result = waitpid(child_pid_array[i], &status, WNOHANG);
 
-	/*
+		if (result == 0) {
+			if (syscall(__NR_accevt_destroy, event_id_array[i])
+					!= 0) {
+				printf("During destroy error: %s\n",
+						strerror(errno));
+			}
+		}
+	}
 
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
-
-	motion->dlt_x = 10;
-	motion->dlt_y = 0;
-	motion->dlt_z = 10;
-	motion->frq = 2;
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
-
-	motion->dlt_x = 0;
-	motion->dlt_y = 5;
-	motion->dlt_z = 5;
-	motion->frq = 3;
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
-
-	motion->dlt_x = 15;
-	motion->dlt_y = 15;
-	motion->dlt_z = 15;
-	motion->frq = 4;
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
-
-	motion->dlt_x = 25;
-	motion->dlt_y = 25;
-	motion->dlt_z = 0;
-	motion->frq = 2;
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
-	*/
-	/*printf("Syscall returned: %d.\n", syscall(__NR_accevt_wait, 0));	
-	  printf("Syscall returned: %d.\n", syscall(__NR_accevt_signal, motion));	
-	  printf("Syscall returned: %d.\n", syscall(__NR_accevt_destroy, 0));	
-	 */
 	return 0;
 }
