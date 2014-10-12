@@ -118,8 +118,8 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 				schedule();
 			finish_wait(&queue,&wait);
 		}
-		printk("x=%d, y=%d, z=%d\n", currentEvent->dlt_x, currentEvent->dlt_y,
-		 currentEvent->dlt_z);
+		printk("x=%d, y=%d, z=%d\n", currentEvent->dx, currentEvent->dy,
+		 currentEvent->dz);
 	}
 	return event_id;
 }
