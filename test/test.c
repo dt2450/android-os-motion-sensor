@@ -27,18 +27,18 @@ struct acc_motion {
                           sum_each_sample(dlt_x + dlt_y + dlt_z) > NOISE */
 };
 
+int events[100];
+int idx;
+
 int validate_input(int argc, char **argv)
 {
 	return 0;
 }
 
-int main(int argc, char **argv)
+void test_1_create_events(void)
 {
-	int returnValue = validate_input(argc, argv);
+	idx = 0;
 	int event_id = 0;
-	if (returnValue == -1)
-		return returnValue;
-
 	struct dev_acceleration *acc = (struct dev_acceleration *) malloc
 		(sizeof(struct dev_acceleration));
 	/*printf("Syscall returned: %ld.\n", syscall(__NR_set_acceleration, acc));*/
@@ -49,42 +49,64 @@ int main(int argc, char **argv)
 	motion->dlt_y = 5;
 	motion->dlt_z = 0;
 	motion->frq = 1;
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
+	events[idx++] = syscall(__NR_accevt_create, motion);
+	printf("event id is %d\n", events[idx-1]);
+	//printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
 
 	motion->dlt_x = 10;
 	motion->dlt_y = 0;
 	motion->dlt_z = 10;
 	motion->frq = 2;
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
+	events[idx++] = syscall(__NR_accevt_create, motion);
+	printf("event id is %d\n", events[idx-1]);
+	//printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
 
 	motion->dlt_x = 0;
 	motion->dlt_y = 5;
 	motion->dlt_z = 5;
 	motion->frq = 3;
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
+	events[idx++] = syscall(__NR_accevt_create, motion);
+	printf("event id is %d\n", events[idx-1]);
+	//printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
 
 	motion->dlt_x = 15;
 	motion->dlt_y = 15;
 	motion->dlt_z = 15;
 	motion->frq = 4;
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
+	events[idx++] = syscall(__NR_accevt_create, motion);
+	printf("event id is %d\n", events[idx-1]);
+	//printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
 
 	motion->dlt_x = 25;
 	motion->dlt_y = 25;
 	motion->dlt_z = 0;
 	motion->frq = 2;
-	event_id = syscall(__NR_accevt_create, motion);
-	printf("event id is %d\n", event_id);
-	printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
+	events[idx++] = syscall(__NR_accevt_create, motion);
+	printf("event id is %d\n", events[idx-1]);
+	//printf("Syscall returned: %ld.\n", syscall(__NR_accevt_wait, event_id));
 
+}
+
+void test_2_remove_events(void)
+{
+	int i, ret;
+	struct acc_motion *m = NULL;
+
+	for (i=0; i<idx; i++) {
+		ret = syscall(__NR_accevt_destroy, events[i]);
+		printf("return val is: %d\n", ret);
+	}
+}
+
+int main(int argc, char **argv)
+{
+	int returnValue = validate_input(argc, argv);
+	if (returnValue == -1)
+		return returnValue;
+
+	test_1_create_events();
+	test_2_remove_events();
+	
 	/*printf("Syscall returned: %d.\n", syscall(__NR_accevt_wait, 0));	
 	printf("Syscall returned: %d.\n", syscall(__NR_accevt_signal, motion));	
 	printf("Syscall returned: %d.\n", syscall(__NR_accevt_destroy, 0));	
