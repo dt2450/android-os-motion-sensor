@@ -255,3 +255,43 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 
         return 0;
 }
+
+/*
+* In the caller, if status is:
+* 0	: event occurred, and event_elt is returned.
+* 1	: no event occurred, and NULL is returned.
+* -1	: error occurred, and NULL is returned.
+*
+* Caller can call this in a while loop over status == 0,
+* and keep removing the event_elt using
+* remove_event_from_list().
+*/
+struct event_elt *check_event_occurred(int DX, int DY, int DZ, int FRQ, int *status)
+{
+	struct list_head *p;
+	struct event_elt *m;
+
+	if (event_q_len == 0) {
+		pr_err("check_event_occurred: No events in event_q\n");
+		*status = -1;
+		return NULL;
+	}
+
+	list_for_each(p, head_ptr->next) {
+		m = list_entry(p, struct event_elt, list);
+		if (m == NULL) {
+			pr_err("check_event_occurred: retrieved NULL from event q\n");
+			*status = -1;
+			return NULL;
+		}
+		if (DX >= m->dx && DY >= m->dy && DZ >= m->dz && FRQ >= m->frq) {
+			pr_err("check_event_occurred: found event with id %d: %d %d %d\n", m->id, m->dx, m->dy, m->dz);
+			*status = 0;
+			return m;
+		}
+	}
+
+	pr_err("check_event_occurred: No event occurred.\n");
+	*status = 1;
+	return NULL;
+}
