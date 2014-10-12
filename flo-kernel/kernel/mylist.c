@@ -7,6 +7,7 @@
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/kfifo.h>
+#include <linux/sched.h>
 
 #include <linux/acceleration.h>
 #include <linux/mylist.h>
@@ -85,21 +86,23 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
         event->dz = motion->dlt_z;
         event->frq = motion->frq;
 	event->id = event_id;
+	event->wait_ptr = NULL;
+
+	read_lock(&tasklist_lock);
+	event->pid = current->pid;
+	read_unlock(&tasklist_lock);
+
         
 	list_add(&event->list, head_ptr);
         head_ptr = &(event->list);
-        
 	event_q_len++;
-	printk("enqueued %d: %d %d %d %d\n", event_q_len, event->dx, event->dy, event->dz, event->frq);
+
+	printk("Enqueued event %d: %d %d %d %d, with id=%d, pid=%d\n", event_q_len, event->dx, event->dy, event->dz, event->frq, event->id, event->pid);
 	return 0;
 }
 
 int remove_event_from_list(struct event_elt *event)
 {
-        //struct list_head *p;
-        //struct event_elt *m;
-        //int i;
-	
 	if (event == NULL) {
 		pr_err("remove_event_from_list: event is NULL\n");
 		return -1;
@@ -117,20 +120,9 @@ int remove_event_from_list(struct event_elt *event)
                 return -1;
         }
 
-        //printk("before delete, head_ptr: %x, &event->list= %x\n", (unsigned int)head_ptr, (unsigned int)&event->list);
         list_del(&event->list);
 	event_q_len--;
         
-	/*
-	i = 0;
-        list_for_each(p, head_ptr->next) {
-                m = list_entry(p, struct event_elt, list);
-                printk("Element %d: %d\n", i, m->dx);
-                i++;
-        }
-	*/
-        //printk("after delete, head_ptr: %x, &event->list= %x\n", (unsigned int)head_ptr, (unsigned int)&event->list);
-
 	return 0;
 }
 
@@ -139,6 +131,11 @@ int remove_event_using_id(int event_id)
 	struct list_head *p;
 	struct event_elt *m;
 	int ret, found = 0;
+
+	if (event_q_len == 0) {
+		pr_err("remove_event_using_id: No events in event_q\n");
+		return -1;
+	}
 
 	list_for_each(p, head_ptr->next) {
 		m = list_entry(p, struct event_elt, list);
@@ -180,13 +177,19 @@ int add_deltas(int *DX, int *DY, int *DZ)
 	pr_info("In add_deltas, summing ........\n");
 	list_for_each(p, delta_q_head_ptr) {
 		d = list_entry(p, struct delta_elt, list);
-		pr_info("Elt %d: %d %d %d %d", i, d->dx, d->dy, d->dz, d->frq);
-		*DX += d->dx;
-		*DY += d->dy;
-		*DZ += d->dz;
-		if (d->frq == 1)
+		if (d == NULL) {
+			pr_err("add_deltas: retrieved NULL from delta_q\n");
+			return -1;
+		}
+		pr_err("Elt %d: %d %d %d %d", i, d->dx, d->dy, d->dz, d->frq);
+		
+		if (d->frq == 1) {
+			*DX += d->dx;
+			*DY += d->dy;
+			*DZ += d->dz;
 			FRQ += 1;
-		i++;
+			i++;
+		}
 	}
 	
 	pr_info("Added %d deltas\n", i);
@@ -198,13 +201,6 @@ int add_deltas(int *DX, int *DY, int *DZ)
 int add_delta_to_list(struct dev_acceleration *dev_acc)
 {
 	struct delta_elt *temp = NULL;
-
-	/*
-        if (delta_q_head_ptr == NULL) {
-                pr_err("add_delta_to_list: event list is NULL.\n");
-                return -1;
-        }
-	*/
 
         if (dev_acc == NULL) {
                 pr_err("add_delta_to_list: motion is NULL.\n");
@@ -222,7 +218,7 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 		return -1;
 	}
 
-        if (delta_q_len >= 20) {
+        if (delta_q_len >= WINDOW) {
 		pr_info("delta q is full, will pop one\n");
 		temp = list_first_entry(&delta_q_head, struct delta_elt, list);
 		if (temp == NULL) {
@@ -246,6 +242,8 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 
 	if (temp->dx + temp->dy + temp->dz > NOISE)
 		temp->frq = 1;
+	else
+		temp->frq = 0;
 
 	prev->x = dev_acc->x;
 	prev->y = dev_acc->y;
@@ -258,4 +256,69 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 	pr_info("current size of delta_q: %d\n", delta_q_len);
 
         return 0;
+}
+/*
+* In the caller, if status is:
+* 0	: event occurred, and event_elt is returned : this is good
+* 1	: no event occurred, and NULL is returned : this is also good
+* -1	: error occurred, and NULL is returned : this is bad.
+*/
+struct event_elt **check_events_occurred(int DX, int DY, int DZ, int FRQ, int *status, int *len)
+{
+	struct list_head *p;
+	struct event_elt *m;
+	struct event_elt **events;
+	int count, index;
+
+	if (event_q_len == 0) {
+		pr_err("check_event_occurred: No events in event_q\n");
+		*status = 1;
+		return NULL;
+	}
+
+	count = 0;
+	list_for_each(p, head_ptr->next) {
+		m = list_entry(p, struct event_elt, list);
+		if (m == NULL) {
+			pr_err("check_event_occurred: retrieved NULL from event q\n");
+			*status = -1;
+			return NULL;
+		}
+		if (DX >= m->dx && DY >= m->dy && DZ >= m->dz && FRQ >= m->frq) {
+			pr_err("check_event_occurred: found event with id %d: %d %d %d\n", m->id, m->dx, m->dy, m->dz);
+			count++;	
+		}
+	}
+
+	if (count == 0) {
+		pr_err("check_event_occurred: No event occurred.\n");
+		*status = 1;
+		return NULL;
+	}
+	pr_err("%d events have occurred\n", count);
+
+	events = kmalloc(sizeof(struct event_elt *) * count, GFP_KERNEL);
+	if (events == NULL) {
+		pr_err("check_event_occurred: couldn't allocate events.\n");
+		*status = -1;
+		return NULL;
+	}
+
+	index = 0;
+	list_for_each(p, head_ptr->next) {
+		m = list_entry(p, struct event_elt, list);
+		if (m == NULL) {
+			pr_err("check_event_occurred: retrieved NULL from event q\n");
+			*status = -1;
+			return NULL;
+		}
+		if (DX >= m->dx && DY >= m->dy && DZ >= m->dz && FRQ >= m->frq) {
+			events[index++] = m;	
+		}
+	}
+
+	*status = 0;
+	*len = count;
+	pr_err("Returning %d events\n", index);
+	return events;
 }
