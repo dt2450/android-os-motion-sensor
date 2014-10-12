@@ -131,6 +131,11 @@ int remove_event_from_list(struct event_elt *event)
 	return 0;
 }
 
+int remove_event_using_id(int event_id)
+{
+	return 0;
+}
+
 int add_deltas(int *DX, int *DY, int *DZ)
 {
 	struct delta_elt *d;
