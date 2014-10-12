@@ -9,7 +9,7 @@
 #include <linux/acceleration.h>
 #include <linux/mylist.h>
 
-static int counter;
+static atomic_t *counter;
 
 /*
  * Set current device acceleration in the kernel.
@@ -66,8 +66,10 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 		pr_err("could not initialize queue");
 		return -EFAULT;
 	}
-
-	counter += 1;
+	if(counter == NULL){
+		counter = kmalloc(sizeof(atomic_t), GFP_KERNEL);
+	}
+	atomic_inc(counter);
 	currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
 	if (currentEvent == NULL) {
 		pr_err("error: Not enough memory!");
@@ -80,12 +82,12 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	}
 	
 	/*TODO: grab write lock on event_q*/
-	if (add_event_to_list(currentEvent,counter) == -1){
+	if (add_event_to_list(currentEvent,*counter) == -1){
 		pr_err("could not add event to the event list");
 		return -EFAULT;
 	} 
 	/*TODO: release write lock on event_q*/
-	return counter;
+	return *counter;
 }
  
 /* Block a process on an event.
@@ -97,7 +99,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 SYSCALL_DEFINE1(accevt_wait, int, event_id)
 {
 	struct acc_motion *currentEvent = NULL;
-	if (event_id <= counter) {
+	if (event_id <= *counter) {
 		/*get event type from the list api*/
 	}
 	if (currentEvent == NULL) {
@@ -169,7 +171,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 
 SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 {
-	if (event_id <= counter) {
+	if (event_id <= *counter) {
 		/*TODO:grab write lock on event_q*/
 		int returnVal = remove_event_using_id(event_id);
 		/*TODO:release write lock on event_q*/
