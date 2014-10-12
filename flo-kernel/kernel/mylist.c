@@ -96,9 +96,9 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 
 int remove_event_from_list(struct event_elt *event)
 {
-        struct list_head *p;
-        struct event_elt *m;
-        int i;
+        //struct list_head *p;
+        //struct event_elt *m;
+        //int i;
 	
 	if (event == NULL) {
 		pr_err("remove_event_from_list: event is NULL\n");
@@ -120,12 +120,15 @@ int remove_event_from_list(struct event_elt *event)
         //printk("before delete, head_ptr: %x, &event->list= %x\n", (unsigned int)head_ptr, (unsigned int)&event->list);
         list_del(&event->list);
 	event_q_len--;
-        i = 0;
+        
+	/*
+	i = 0;
         list_for_each(p, head_ptr->next) {
                 m = list_entry(p, struct event_elt, list);
                 printk("Element %d: %d\n", i, m->dx);
                 i++;
         }
+	*/
         //printk("after delete, head_ptr: %x, &event->list= %x\n", (unsigned int)head_ptr, (unsigned int)&event->list);
 
 	return 0;
@@ -133,6 +136,32 @@ int remove_event_from_list(struct event_elt *event)
 
 int remove_event_using_id(int event_id)
 {
+	struct list_head *p;
+	struct event_elt *m;
+	int ret, found = 0;
+
+	list_for_each(p, head_ptr->next) {
+		m = list_entry(p, struct event_elt, list);
+		if (m == NULL) {
+			pr_err("remove_event_using_id: retrieved NULL from event q\n");
+			return -1;
+		}
+		if (m->id == event_id) {
+			found = 1;
+			pr_err("remove_event_using_id: found event with id %d: %d %d %d\n", event_id, m->dx, m->dy, m->dz);
+			ret = remove_event_from_list(m);
+			if (ret == -1)
+				return -1;
+			pr_err("remove_event_using_id: successfully removed event\n");
+			break;
+		}
+	}
+
+	if (found == 0) {
+		pr_err("remove_event_using_id: No event found with id: %d\n", event_id);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -169,7 +198,6 @@ int add_deltas(int *DX, int *DY, int *DZ)
 int add_delta_to_list(struct dev_acceleration *dev_acc)
 {
 	struct delta_elt *temp = NULL;
-	int DX, DY, DZ, FRQ;
 
 	/*
         if (delta_q_head_ptr == NULL) {
@@ -228,15 +256,6 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 	pr_info("Pushed %d %d %d\n", temp->dx, temp->dy, temp->dz);
 	delta_q_len++;
 	pr_info("current size of delta_q: %d\n", delta_q_len);
-
-	
-	FRQ = add_deltas(&DX, &DY, &DZ);
-	if (FRQ == -1) {
-		return -1;
-	}
-
-	pr_info("Current DX=%d, DY=%d, DZ=%d, FRQ=%d\n", DX, DY, DZ, FRQ);
-	
 
         return 0;
 }
