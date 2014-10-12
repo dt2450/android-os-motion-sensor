@@ -9,6 +9,8 @@
 #include <linux/acceleration.h>
 #include <linux/mylist.h>
 
+static int counter;
+
 /*
  * Set current device acceleration in the kernel.
  * The parameter acceleration is the pointer to the address
@@ -17,10 +19,6 @@
  * on failure. 
  * syscall number 378
  */
-
-static struct acc_motion **k_acc_motion = NULL;
-static int counter;
-
 
 SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration)
 {
@@ -50,7 +48,7 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 	add_delta_to_list(k_acc);
 
 	kfree(k_acc);
-	return 378;
+	return 0;
 }
 
 
@@ -65,7 +63,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	int returnVal = init_event_q();
 	if (returnVal != 0){
 		pr_err("could not initialize queue");
-		reutnr -EFAULT;
+		reutrn -EFAULT;
 	}
 
 	struct acc_motion *currentEvent = NULL;
@@ -99,13 +97,14 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 SYSCALL_DEFINE1(accevt_wait, int, event_id)
 {
 	struct acc_motion *currentEvent = NULL;
-	if(event_id <= counter)
-		currentEvent = *(k_acc_motion + event_id - 1);
+	if (event_id <= counter) {
+		/*get event type from the list api*/
+	}
 	if (currentEvent == NULL) {
 		printk("event Id not found");
 		return -EFAULT;
 	} else {
-		/*block processes on this event id*/
+		/*TODO: block processes on this event id*/
 		printk("x=%d, y=%d, z=%d\n", currentEvent->dlt_x, currentEvent->dlt_y,
 		 currentEvent->dlt_z);
 	}
@@ -156,6 +155,8 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 		pr_err("error occured while calculating cumulative deltas");
 		return -EFAULT;
 	}
+	/*TODO: iterate through events and find if event criteria is matched*/
+	/*TODO: if matched let the processes from the queue go!*/
 	/*TODO: release read lock on delta_q*/
 	kfree(k_acc);
 	return 0;
@@ -175,7 +176,7 @@ SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 		if(returnVal == -1){
 			return -EFAULT;
 		}else{
-			/*destroy processes waiting on this event*/
+			/*TODO:destroy processes waiting on this event*/
 			return 0;
 		}
 	} else {
