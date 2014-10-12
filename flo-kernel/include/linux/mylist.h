@@ -20,8 +20,10 @@ struct event_elt
 	unsigned int dy;
 	unsigned int dz;
 	unsigned int frq;
-
 	int id;
+
+	int pid;
+	void* wait_ptr;
 
 	struct list_head list;
 };

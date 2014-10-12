@@ -7,6 +7,7 @@
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/kfifo.h>
+#include <linux/sched.h>
 
 #include <linux/acceleration.h>
 #include <linux/mylist.h>
@@ -85,12 +86,18 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
         event->dz = motion->dlt_z;
         event->frq = motion->frq;
 	event->id = event_id;
+	event->wait_ptr = NULL;
+
+	read_lock(&tasklist_lock);
+	event->pid = current->pid;
+	read_unlock(&tasklist_lock);
+
         
 	list_add(&event->list, head_ptr);
         head_ptr = &(event->list);
-        
 	event_q_len++;
-	printk("enqueued %d: %d %d %d %d\n", event_q_len, event->dx, event->dy, event->dz, event->frq);
+
+	printk("Enqueued event %d: %d %d %d %d, with id=%d, pid=%d\n", event_q_len, event->dx, event->dy, event->dz, event->frq, event->id, event->pid);
 	return 0;
 }
 
@@ -139,6 +146,11 @@ int remove_event_using_id(int event_id)
 	struct list_head *p;
 	struct event_elt *m;
 	int ret, found = 0;
+
+	if (event_q_len == 0) {
+		pr_err("remove_event_using_id: No events in event_q\n");
+		return -1;
+	}
 
 	list_for_each(p, head_ptr->next) {
 		m = list_entry(p, struct event_elt, list);
