@@ -82,12 +82,12 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	}
 	
 	/*TODO: grab write lock on event_q*/
-	if (add_event_to_list(currentEvent,*counter) == -1){
+	if (add_event_to_list(currentEvent,atomic_read(counter)) == -1){
 		pr_err("could not add event to the event list");
 		return -EFAULT;
 	} 
 	/*TODO: release write lock on event_q*/
-	return *counter;
+	return atomic_read(counter);
 }
  
 /* Block a process on an event.
@@ -99,7 +99,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 SYSCALL_DEFINE1(accevt_wait, int, event_id)
 {
 	struct acc_motion *currentEvent = NULL;
-	if (event_id <= *counter) {
+	if (event_id <= atomic_read(counter)) {
 		/*get event type from the list api*/
 	}
 	if (currentEvent == NULL) {
@@ -196,7 +196,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 
 SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 {
-	if (event_id <= *counter) {
+	if (event_id <= atomic_read(counter)) {
 		/*TODO:grab write lock on event_q*/
 		int returnVal = remove_event_using_id(event_id);
 		/*TODO:release write lock on event_q*/
