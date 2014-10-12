@@ -124,7 +124,9 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
-	int dx,dy,dz,freq;
+	struct event_elt **events = NULL;
+	int dx, dy, dz, freq;
+	int status, len, i;
 	
 	int returnVal = init_delta_q();
 	
@@ -157,6 +159,23 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	}
 	/*TODO: iterate through events and find if event criteria is matched*/
 	/*TODO: if matched let the processes from the queue go!*/
+
+	events = check_events_occurred(dx, dy, dz, freq, &status, &len);
+	if (status == -1) {
+		pr_err("error while checking events\n");
+		return -EFAULT;
+	}
+
+	if (status == 0) {
+		for (i=0; i<len; i++) {
+			returnVal = remove_event_from_list(events[i]);
+			if (returnVal == -1) {
+				pr_err("error while removing events\n");
+				return -EFAULT;
+			}
+		}
+	}
+
 	/*TODO: release read lock on delta_q*/
 	kfree(k_acc);
 	return 0;

@@ -242,6 +242,8 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 
 	if (temp->dx + temp->dy + temp->dz > NOISE)
 		temp->frq = 1;
+	else
+		temp->frq = 0;
 
 	prev->x = dev_acc->x;
 	prev->y = dev_acc->y;
@@ -255,28 +257,26 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 
         return 0;
 }
-
 /*
 * In the caller, if status is:
-* 0	: event occurred, and event_elt is returned.
-* 1	: no event occurred, and NULL is returned.
-* -1	: error occurred, and NULL is returned.
-*
-* Caller can call this in a while loop over status == 0,
-* and keep removing the event_elt using
-* remove_event_from_list().
+* 0	: event occurred, and event_elt is returned : this is good
+* 1	: no event occurred, and NULL is returned : this is also good
+* -1	: error occurred, and NULL is returned : this is bad.
 */
-struct event_elt *check_event_occurred(int DX, int DY, int DZ, int FRQ, int *status)
+struct event_elt **check_events_occurred(int DX, int DY, int DZ, int FRQ, int *status, int *len)
 {
 	struct list_head *p;
 	struct event_elt *m;
+	struct event_elt **events;
+	int count, index;
 
 	if (event_q_len == 0) {
 		pr_err("check_event_occurred: No events in event_q\n");
-		*status = -1;
+		*status = 1;
 		return NULL;
 	}
 
+	count = 0;
 	list_for_each(p, head_ptr->next) {
 		m = list_entry(p, struct event_elt, list);
 		if (m == NULL) {
@@ -286,12 +286,39 @@ struct event_elt *check_event_occurred(int DX, int DY, int DZ, int FRQ, int *sta
 		}
 		if (DX >= m->dx && DY >= m->dy && DZ >= m->dz && FRQ >= m->frq) {
 			pr_err("check_event_occurred: found event with id %d: %d %d %d\n", m->id, m->dx, m->dy, m->dz);
-			*status = 0;
-			return m;
+			count++;	
 		}
 	}
 
-	pr_err("check_event_occurred: No event occurred.\n");
-	*status = 1;
-	return NULL;
+	if (count == 0) {
+		pr_err("check_event_occurred: No event occurred.\n");
+		*status = 1;
+		return NULL;
+	}
+	pr_err("%d events have occurred\n", count);
+
+	events = kmalloc(sizeof(struct event_elt *) * count, GFP_KERNEL);
+	if (events == NULL) {
+		pr_err("check_event_occurred: couldn't allocate events.\n");
+		*status = -1;
+		return NULL;
+	}
+
+	index = 0;
+	list_for_each(p, head_ptr->next) {
+		m = list_entry(p, struct event_elt, list);
+		if (m == NULL) {
+			pr_err("check_event_occurred: retrieved NULL from event q\n");
+			*status = -1;
+			return NULL;
+		}
+		if (DX >= m->dx && DY >= m->dy && DZ >= m->dz && FRQ >= m->frq) {
+			events[index++] = m;	
+		}
+	}
+
+	*status = 0;
+	*len = count;
+	pr_err("Returning %d events\n", index);
+	return events;
 }
