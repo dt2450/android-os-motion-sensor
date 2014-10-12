@@ -103,10 +103,6 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 
 int remove_event_from_list(struct event_elt *event)
 {
-        //struct list_head *p;
-        //struct event_elt *m;
-        //int i;
-	
 	if (event == NULL) {
 		pr_err("remove_event_from_list: event is NULL\n");
 		return -1;
@@ -124,20 +120,9 @@ int remove_event_from_list(struct event_elt *event)
                 return -1;
         }
 
-        //printk("before delete, head_ptr: %x, &event->list= %x\n", (unsigned int)head_ptr, (unsigned int)&event->list);
         list_del(&event->list);
 	event_q_len--;
         
-	/*
-	i = 0;
-        list_for_each(p, head_ptr->next) {
-                m = list_entry(p, struct event_elt, list);
-                printk("Element %d: %d\n", i, m->dx);
-                i++;
-        }
-	*/
-        //printk("after delete, head_ptr: %x, &event->list= %x\n", (unsigned int)head_ptr, (unsigned int)&event->list);
-
 	return 0;
 }
 
@@ -217,13 +202,6 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 {
 	struct delta_elt *temp = NULL;
 
-	/*
-        if (delta_q_head_ptr == NULL) {
-                pr_err("add_delta_to_list: event list is NULL.\n");
-                return -1;
-        }
-	*/
-
         if (dev_acc == NULL) {
                 pr_err("add_delta_to_list: motion is NULL.\n");
                 return -1;
@@ -240,7 +218,7 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 		return -1;
 	}
 
-        if (delta_q_len >= 20) {
+        if (delta_q_len >= WINDOW) {
 		pr_info("delta q is full, will pop one\n");
 		temp = list_first_entry(&delta_q_head, struct delta_elt, list);
 		if (temp == NULL) {
