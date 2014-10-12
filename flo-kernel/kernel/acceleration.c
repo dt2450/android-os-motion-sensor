@@ -60,13 +60,13 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
  
 SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 {
+	struct acc_motion *currentEvent = NULL;
 	int returnVal = init_event_q();
 	if (returnVal != 0){
 		pr_err("could not initialize queue");
-		reutrn -EFAULT;
+		return -EFAULT;
 	}
 
-	struct acc_motion *currentEvent = NULL;
 	counter += 1;
 	currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
 	if (currentEvent == NULL) {
@@ -124,6 +124,7 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
+	int dx,dy,dz,freq;
 	
 	int returnVal = init_delta_q();
 	
@@ -149,8 +150,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	add_delta_to_list(k_acc);
 	/*TODO:release write lock on delta_q*/
 	/*TODO:grab read lock on delta_q*/
-	int dx,dy,dz;
-	int freq = add_deltas(&dx,&dy,&dz);
+	freq = add_deltas(&dx,&dy,&dz);
 	if (freq == -1) {
 		pr_err("error occured while calculating cumulative deltas");
 		return -EFAULT;
