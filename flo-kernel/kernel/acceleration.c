@@ -131,18 +131,18 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	int returnVal = init_delta_q();
 	
 	if (returnVal == -1) {
-		pr_err("error: Not enough memory!");
+		pr_err("accevt_signal: Not enough memory!");
 		return -ENOMEM;
         }
 
 	if (acceleration == NULL) {
-		pr_err("set_acceleration: acceleration is NULL\n");
+		pr_err("accevt_signal: acceleration is NULL\n");
 		return -EINVAL;
 	}
 
 	k_acc = kmalloc(sizeof(struct dev_acceleration), GFP_KERNEL);
 	if (copy_from_user(k_acc, acceleration, sizeof(struct dev_acceleration))) {
-		pr_err("set_acceleration: copy_from_user failed.\n");
+		pr_err("accevt_signal: copy_from_user failed.\n");
 		kfree(k_acc);
 		return -EFAULT;
 	}
@@ -152,25 +152,31 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	add_delta_to_list(k_acc);
 	/*TODO:release write lock on delta_q*/
 	/*TODO:grab read lock on delta_q*/
+
+	/* Add all delta values exceeding NOISE within the current WINDOW */
 	freq = add_deltas(&dx,&dy,&dz);
 	if (freq == -1) {
-		pr_err("error occured while calculating cumulative deltas");
+		pr_err("accevt_signal: error occured while calculating cumulative deltas");
+		kfree(k_acc);
 		return -EFAULT;
 	}
-	/*TODO: iterate through events and find if event criteria is matched*/
-	/*TODO: if matched let the processes from the queue go!*/
 
+	/* Get a list of all events that satisfy delta/frq values */
 	events = check_events_occurred(dx, dy, dz, freq, &status, &len);
 	if (status == -1) {
-		pr_err("error while checking events\n");
+		pr_err("accevt_signal: error while checking events\n");
+		kfree(k_acc);
 		return -EFAULT;
 	}
 
 	if (status == 0) {
 		for (i=0; i<len; i++) {
+			/*TODO:  wake up processes from the queue!*/
+			/* Remove the event from the event queue */
 			returnVal = remove_event_from_list(events[i]);
 			if (returnVal == -1) {
-				pr_err("error while removing events\n");
+				pr_err("accevt_signal: error while removing events\n");
+				kfree(k_acc);
 				return -EFAULT;
 			}
 		}
