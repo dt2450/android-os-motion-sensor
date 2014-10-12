@@ -95,7 +95,15 @@ void test_2_remove_events(void)
 	for (i=0; i<idx; i++) {
 		ret = syscall(__NR_accevt_destroy, events[i]);
 		printf("return val is: %d\n", ret);
+		if (i == 2) {
+			printf("Attempting to remove invalid event:\n");
+			ret = syscall(__NR_accevt_destroy, -200);
+			printf("return val is: %d\n", ret);
+		}
 	}
+	printf("Attempting to remove event after q is empty:\n");
+	ret = syscall(__NR_accevt_destroy, -200);
+	printf("return val is: %d\n", ret);
 }
 
 int main(int argc, char **argv)
