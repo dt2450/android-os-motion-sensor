@@ -33,5 +33,6 @@ int remove_event_using_id(int event_id);
 
 int init_delta_q(void);
 int add_delta_to_list(struct dev_acceleration *dev_acc);
+int add_deltas(int *DX, int *DY, int *DZ);
 
 #endif /* __LINUX_MYLIST_H */
