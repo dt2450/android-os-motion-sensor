@@ -180,13 +180,19 @@ int add_deltas(int *DX, int *DY, int *DZ)
 	pr_info("In add_deltas, summing ........\n");
 	list_for_each(p, delta_q_head_ptr) {
 		d = list_entry(p, struct delta_elt, list);
-		pr_info("Elt %d: %d %d %d %d", i, d->dx, d->dy, d->dz, d->frq);
-		*DX += d->dx;
-		*DY += d->dy;
-		*DZ += d->dz;
-		if (d->frq == 1)
+		if (d == NULL) {
+			pr_err("add_deltas: retrieved NULL from delta_q\n");
+			return -1;
+		}
+		pr_err("Elt %d: %d %d %d %d", i, d->dx, d->dy, d->dz, d->frq);
+		
+		if (d->frq == 1) {
+			*DX += d->dx;
+			*DY += d->dy;
+			*DZ += d->dz;
 			FRQ += 1;
-		i++;
+			i++;
+		}
 	}
 	
 	pr_info("Added %d deltas\n", i);
