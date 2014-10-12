@@ -68,6 +68,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	}
 	if(counter == NULL){
 		counter = kmalloc(sizeof(atomic_t), GFP_KERNEL);
+		atomic_set(counter,0);
 	}
 	atomic_inc(counter);
 	currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
