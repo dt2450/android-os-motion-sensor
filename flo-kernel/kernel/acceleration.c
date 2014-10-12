@@ -28,11 +28,6 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 	
 	int returnVal;
 	
-	returnVal = init_event_q();
-	if (returnVal == -1) {
-		pr_err("error: Not enough memory!");
-		return -ENOMEM;
-	}
 	returnVal = init_delta_q();
 	if (returnVal == -1) {
 		pr_err("error: Not enough memory!");
@@ -66,15 +61,15 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
  */
  
 SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
-{	
+{
+	int returnVal = init_event_q();
+	if (returnVal != 0){
+		pr_err("could not initialize queue");
+		reutnr -EFAULT;
+	}
+
 	struct acc_motion *currentEvent = NULL;
 	counter += 1;
-	k_acc_motion = krealloc(k_acc_motion, (counter * sizeof(struct acc_motion *)),
-				 GFP_KERNEL);
-	if (k_acc_motion == NULL ) {
-		pr_err("error: Not enough memory!");
-		return -ENOMEM;
-	}
 	currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
 	if (currentEvent == NULL) {
 		pr_err("error: Not enough memory!");
@@ -86,8 +81,12 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 		return -EFAULT;
 	}
 	
-	*(k_acc_motion + counter - 1) = currentEvent;
-	
+	/*TODO: grab write lock on event_q*/
+	if (add_event_to_list(currentEvent,counter) == -1){
+		pr_err("could not add event to the event list");
+		return -EFAULT;
+	} 
+	/*TODO: release write lock on event_q*/
 	return counter;
 }
  
@@ -127,14 +126,8 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
 	
-	int returnVal;
+	int returnVal = init_delta_q();
 	
-	returnVal = init_event_q();
-	if (returnVal == -1) {
-		pr_err("error: Not enough memory!");
-		return -ENOMEM;
-	}
-	returnVal = init_delta_q();
 	if (returnVal == -1) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
@@ -153,25 +146,38 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	}
 
 	printk("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
+	/*TODO:grab write lock on delta_q*/
 	add_delta_to_list(k_acc);
-
+	/*TODO:release write lock on delta_q*/
+	/*TODO:grab read lock on delta_q*/
+	int dx,dy,dz;
+	int freq = add_deltas(&dx,&dy,&dz);
+	if (freq == -1) {
+		pr_err("error occured while calculating cumulative deltas");
+		return -EFAULT;
+	}
+	/*TODO: release read lock on delta_q*/
 	kfree(k_acc);
-	return 381;
+	return 0;
 }
 
 /* Destroy an acceleration event using the event_id,
  * Return 0 on success and the appropriate error on failure.
  * system call number 382
  */
- 
+
 SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 {
-	struct acc_motion *currentEvent = NULL;
 	if (event_id <= counter) {
-		*(k_acc_motion + event_id - 1) = NULL;
-		/*TODO: Insert code to kill processes in wait queue
-		and also remove wait quueue*/
-		return 0;
+		/*TODO:grab write lock on event_q*/
+		int returnVal = remove_event_using_id(event_id);
+		/*TODO:release write lock on event_q*/
+		if(returnVal == -1){
+			return -EFAULT;
+		}else{
+			/*destroy processes waiting on this event*/
+			return 0;
+		}
 	} else {
 		return -EFAULT;
 	}
