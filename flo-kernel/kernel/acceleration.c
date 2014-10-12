@@ -99,15 +99,25 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
  
 SYSCALL_DEFINE1(accevt_wait, int, event_id)
 {
-	struct acc_motion *currentEvent = NULL;
+	struct event_elt *currentEvent = NULL;
 	if (event_id <= atomic_read(counter)) {
 		/*get event type from the list api*/
+		currentEvent = get_event_using_id(event_id);	
 	}
 	if (currentEvent == NULL) {
 		printk("event Id not found");
 		return -EFAULT;
 	} else {
 		/*TODO: block processes on this event id*/
+
+		DECLARE_WAIT_QUEUE_HEAD(queue);
+		DEFINE_WAIT(wait);
+		while(!currentEvent->condition) {
+			prepare_to_wait(&queue,&wait,TASK_INTERRUPTIBLE);
+			if(!currentEvent->condition)
+				schedule();
+			finish_wait(&queue,&wait);
+		}
 		printk("x=%d, y=%d, z=%d\n", currentEvent->dlt_x, currentEvent->dlt_y,
 		 currentEvent->dlt_z);
 	}
