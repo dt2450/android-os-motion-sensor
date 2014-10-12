@@ -60,47 +60,83 @@ int init_event_q(void)
 	return 0;
 }
 
-int update_wait_ptr(void *wait_ptr, int pid)
+int get_event_wait_ptr(int pid)
+{
+	struct list_head *p;
+	struct event_elt *m;
+	int ret, found = 0;
+
+	if (event_q_len == 0) {
+		pr_err("get_event_wait_ptr: No events in event_q\n");
+		return -1;
+	}
+
+	list_for_each(p, head_ptr->next) {
+		m = list_entry(p, struct event_elt, list);
+		if (m == NULL) {
+			pr_err("get_event_wait_ptr: retrieved NULL from event q\n");
+			return -1;
+		}
+		if (m->pid == pid) {
+			found = 1;
+			pr_err("get_event_wait_ptr: found event with pid %d: %d %d %d\n", pid, m->dx, m->dy, m->dz);
+			ret = remove_event_from_list(m);
+			if (ret == -1)
+				return -1;
+			pr_err("get_event_wait_ptr: successfully removed event\n");
+			break;
+		}
+	}
+
+	if (found == 0) {
+		pr_err("get_event_wait_ptr: No event found with id: %d\n", pid);
+		return -1;
+	}
+
+	return 0;
+}
+
+int update_event_wait_ptr(void *wait_ptr, int pid)
 {
 	struct list_head *p;
         struct event_elt *m;
-        int found = 0;
+	int found = 0;
 
 	if (wait_ptr == NULL) {
-		pr_err("update_wait_ptr: wait_ptr is NULL\n");
+		pr_err("update_event_wait_ptr: wait_ptr is NULL\n");
 		return -1;
 	}
 
 	if (pid < 0) {
-		pr_err("update_wait_ptr: pid is negative: %d\n", pid);
+		pr_err("update_event_wait_ptr: pid is negative: %d\n", pid);
 		return -1;
 	}
 
 	if (event_q_len == 0) {
-                pr_err("update_wait_ptr: No events in event_q\n");
+                pr_err("update_event_wait_ptr: No events in event_q\n");
                 return -1;
         }
 
         list_for_each(p, head_ptr->next) {
                 m = list_entry(p, struct event_elt, list);
                 if (m == NULL) {
-                        pr_err("update_wait_ptr: retrieved NULL from event q\n");
+                        pr_err("update_event_wait_ptr: retrieved NULL from event q\n");
                         return -1;
                 }
                 if (m->pid == pid) {
                         found = 1;
-                        pr_err("update_wait_ptr: found event with pid %d: %d %d %d\n", pid, m->dx, m->dy, m->dz);
+                        pr_err("update_event_wait_ptr: found event with pid %d: %d %d %d\n", pid, m->dx, m->dy, m->dz);
                         m->wait_ptr = wait_ptr;
                         break;
                 }
         }
 
 	if (found == 0) {
-                pr_err("update_wait_ptr: No event found with pid: %d\n", pid);
+                pr_err("update_event_wait_ptr: No event found with pid: %d\n", pid);
                 return -1;
         }
 
-	pr_err("update_wait_ptr: successfully updated wait_ptr\n");
+	pr_err("update_event_wait_ptr: successfully updated wait_ptr\n");
 	return 0;
 }
  
@@ -167,6 +203,32 @@ int remove_event_from_list(struct event_elt *event)
 	event_q_len--;
         
 	return 0;
+}
+
+struct event_elt *get_event_using_id(int event_id)
+{
+	struct list_head *p;
+	struct event_elt *m;
+
+	if (event_q_len == 0) {
+		pr_err("get_event_using_id: No events in event_q\n");
+		return NULL;
+	}
+
+	list_for_each(p, head_ptr->next) {
+		m = list_entry(p, struct event_elt, list);
+		if (m == NULL) {
+			pr_err("get_event_using_id: retrieved NULL from event q\n");
+			return NULL;
+		}
+		if (m->id == event_id) {
+			pr_err("get_event_using_id: found event with id %d: %d %d %d\n", event_id, m->dx, m->dy, m->dz);
+			return m;
+		}
+	}
+
+	pr_err("get_event_using_id: No event found with id: %d\n", event_id);
+	return NULL;
 }
 
 int remove_event_using_id(int event_id)

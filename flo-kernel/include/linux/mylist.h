@@ -21,6 +21,7 @@ struct event_elt
 	unsigned int dz;
 	unsigned int frq;
 	int id;
+	int condition;
 
 	int pid;
 	void* wait_ptr;
@@ -34,6 +35,7 @@ int remove_event_from_list(struct event_elt *event);
 int remove_event_using_id(int event_id);
 struct event_elt **check_events_occurred(int DX, int DY, int DZ, int FRQ, int *status, int *len);
 int update_wait_ptr(void *wait_ptr, int pid);
+struct event_elt *get_event_using_id(int event_id);
 
 int init_delta_q(void);
 int add_delta_to_list(struct dev_acceleration *dev_acc);
