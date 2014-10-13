@@ -10,7 +10,8 @@
 #include <linux/mylist.h>
 
 static atomic_t counter = ATOMIC_INIT(0);
-
+DEFINE_RWLOCK(lock_delta);
+DEFINE_RWLOCK(lock_event);
 static DECLARE_WAIT_QUEUE_HEAD(queue);
 /*
  * Set current device acceleration in the kernel.
@@ -26,8 +27,9 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 	struct dev_acceleration *k_acc = NULL;
 	
 	int returnVal;
-	
+	write_lock(&lock_delta);
 	returnVal = init_delta_q();
+	write_unlock(&lock_delta);
 	if (returnVal == -1) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
@@ -46,7 +48,9 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 	}
 
 	printk("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
+	write_lock(&lock_event);
 	add_delta_to_list(k_acc);
+	write_unlock(&lock_event);
 
 	kfree(k_acc);
 	return 0;
