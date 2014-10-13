@@ -9,8 +9,9 @@
 #include <linux/acceleration.h>
 #include <linux/mylist.h>
 
-static atomic_t *counter;
+static atomic_t counter = ATOMIC_INIT(0);
 
+DECLARE_WAIT_QUEUE_HEAD(queue);
 /*
  * Set current device acceleration in the kernel.
  * The parameter acceleration is the pointer to the address
@@ -66,11 +67,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 		pr_err("could not initialize queue");
 		return -EFAULT;
 	}
-	if(counter == NULL){
-		counter = kmalloc(sizeof(atomic_t), GFP_KERNEL);
-		atomic_set(counter,0);
-	}
-	atomic_inc(counter);
+	atomic_inc(&counter);
 	currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
 	if (currentEvent == NULL) {
 		pr_err("error: Not enough memory!");
@@ -83,12 +80,12 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	}
 	
 	/*TODO: grab write lock on event_q*/
-	if (add_event_to_list(currentEvent,atomic_read(counter)) == -1){
+	if (add_event_to_list(currentEvent,atomic_read(&counter)) == -1){
 		pr_err("could not add event to the event list");
 		return -EFAULT;
 	} 
 	/*TODO: release write lock on event_q*/
-	return atomic_read(counter);
+	return atomic_read(&counter);
 }
  
 /* Block a process on an event.
@@ -100,7 +97,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 SYSCALL_DEFINE1(accevt_wait, int, event_id)
 {
 	struct event_elt *currentEvent = NULL;
-	if (event_id <= atomic_read(counter)) {
+	if (event_id <= atomic_read(&counter)) {
 		/*get event type from the list api*/
 		currentEvent = get_event_using_id(event_id);	
 	}
@@ -109,16 +106,15 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		return -EFAULT;
 	} else {
 		/*TODO: block processes on this event id*/
-		DECLARE_WAIT_QUEUE_HEAD(queue);
 		DEFINE_WAIT(wait);
 		printk("created a queue\n");
-		while(!currentEvent->condition) {
+		while (!currentEvent->condition) {
 			printk("calling prepare to wait---: %d\n",currentEvent->condition);
 			prepare_to_wait(&queue,&wait,TASK_INTERRUPTIBLE);
-			if(!currentEvent->condition)
+			if (!currentEvent->condition)
 				schedule();
-			finish_wait(&queue,&wait);
 		}
+		finish_wait(&queue,&wait);
 		printk("wait done removing event from the list\n");
 		remove_event_from_list(currentEvent);
 		printk("x=%d, y=%d, z=%d\n", currentEvent->dx, currentEvent->dy,
@@ -211,7 +207,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 
 SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 {
-	if (event_id <= atomic_read(counter)) {
+	if (event_id <= atomic_read(&counter)) {
 		/*TODO:grab write lock on event_q*/
 		int returnVal = remove_event_using_id(event_id);
 		/*TODO:release write lock on event_q*/
