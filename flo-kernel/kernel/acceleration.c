@@ -118,10 +118,11 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 				schedule();
 			finish_wait(&queue,&wait);
 		}
+		remove_event_from_list(currentEvent);
 		printk("x=%d, y=%d, z=%d\n", currentEvent->dx, currentEvent->dy,
 		 currentEvent->dz);
 	}
-	return event_id;
+	return 0;
 }
  
  

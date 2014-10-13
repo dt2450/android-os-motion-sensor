@@ -169,18 +169,18 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			//for debugging
-			if (syscall(__NR_accevt_wait, event_id) != event_id) {
+			if (syscall(__NR_accevt_wait, event_id) != 0) {
 				printf("3. Process %d encountered error: %s\n",
 						strerror(errno));
 				exit(-1);
 			} else {
 				//for debugging
-				/*
+				
 				printf("%d Detected a x:%d y:%d z:%d shake\n",
 						getpid(),
 						motion->dlt_x,
 						motion->dlt_y,
-						motion->dlt_z);*/
+						motion->dlt_z);
 			}
 			exit(0);
 		} else {
