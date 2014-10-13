@@ -92,7 +92,7 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 
 	pr_debug("Enqueued event %d: dx:%d", event_q_len, event->dx);
 	pr_debug(" dy:%d dz:%d frq:%d, ", event->dy, event->dz, event->frq);
-	pr_debug(" with id=%d, pid=%d\n", event->id, event->pid);
+	pr_debug(" with id=%d\n", event->id);
 	return 0;
 }
 
