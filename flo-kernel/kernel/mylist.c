@@ -12,7 +12,10 @@
 #include <linux/acceleration.h>
 #include <linux/mylist.h>
 
-static int delta_q_len;
+int delta_q_len = 0;
+DEFINE_RWLOCK(lock_delta);
+DEFINE_RWLOCK(lock_event);
+
 
 static struct list_head head;
 static struct list_head *head_ptr;
@@ -22,41 +25,36 @@ static struct list_head *delta_q_head_ptr;
 
 static int event_q_len;
 
-static struct dev_acceleration *prev;
+static struct dev_acceleration prev;
 
 /*This will initialize the delta queue*/
 int init_delta_q(void)
 {
+	write_lock(&lock_delta);
 	if (delta_q_len == 0) {
 		pr_info("initializing delta_q_head for the 1st time\n");
 		INIT_LIST_HEAD(&delta_q_head);
 		delta_q_head_ptr = &delta_q_head;
+		prev.x = 0;
+		prev.y = 0;
+		prev.z = 0;
 	}
 
-	if (prev == NULL) {
-		prev = kmalloc(sizeof(struct dev_acceleration), GFP_KERNEL);
-		if (prev == NULL) {
-			pr_err("init_delta_q: could not allocate prev.\n");
-			return -1;
-		}
-
-		prev->x = 0;
-		prev->y = 0;
-		prev->z = 0;
-	}
-
+	write_unlock(&lock_delta);
 	return 0;
 }
 
 /*Initializes the event queue*/
 int init_event_q(void)
 {
+	write_lock(&lock_event);
 	if (head_ptr == NULL || head_ptr->next == NULL) {
 		pr_info("initializing event_q_head for the 1st time.\n");
 		INIT_LIST_HEAD(&head);
 		head_ptr = &head;
 	}
 
+	write_unlock(&lock_event);
 	return 0;
 }
 
@@ -86,9 +84,11 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 	event->condition = 0;
 	event->normal_wakeup = 0;
 
+	write_lock(&lock_event);
 	list_add(&event->list, head_ptr);
 	head_ptr = &(event->list);
 	event_q_len++;
+	write_unlock(&lock_event);
 
 	pr_debug("Enqueued event %d: dx:%d", event_q_len, event->dx);
 	pr_debug(" dy:%d dz:%d frq:%d, ", event->dy, event->dz, event->frq);
@@ -104,6 +104,7 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 */
 int remove_event_from_list(struct event_elt *event)
 {
+	/* Lock is taken by the calling function */
 	if (event == NULL) {
 		pr_err("remove_event_from_list: event is NULL\n");
 		return -1;
@@ -133,6 +134,7 @@ int remove_event_from_list(struct event_elt *event)
 
 struct event_elt *get_event_using_id(int event_id)
 {
+	/* lock is taken by the calling function */
 	struct list_head *p;
 	struct event_elt *m;
 
@@ -166,6 +168,7 @@ struct event_elt *get_event_using_id(int event_id)
 
 int remove_event_using_id(int event_id)
 {
+	/* lock is taken by the calling function */
 	struct list_head *p;
 	struct event_elt *m;
 	int ret, found = 0;
@@ -221,8 +224,10 @@ int add_deltas(int *DX, int *DY, int *DZ)
 	*DZ = 0;
 	i = 0;
 
+	read_lock(&lock_delta);
 	if (delta_q_head_ptr == NULL) {
 		pr_err("add_deltas: delta_q_head_ptr is NULL\n");
+		read_unlock(&lock_delta);
 		return -1;
 	}
 
@@ -231,6 +236,7 @@ int add_deltas(int *DX, int *DY, int *DZ)
 		d = list_entry(p, struct delta_elt, list);
 		if (d == NULL) {
 			pr_err("add_deltas: retrieved NULL from delta_q\n");
+			read_unlock(&lock_delta);
 			return -1;
 		}
 		/*pr_err("Elt %d: %d %d %d %d", i, d->dx,
@@ -247,46 +253,44 @@ int add_deltas(int *DX, int *DY, int *DZ)
 
 	pr_info("Added %d deltas\n", i);
 
+	read_unlock(&lock_delta);
 	return FRQ;
 }
 
 
-int add_delta_to_list(struct dev_acceleration *dev_acc)
+int add_delta_to_list(struct dev_acceleration *dev_acc, struct delta_elt *temp)
 {
-	struct delta_elt *temp = NULL;
-
+	write_lock(&lock_delta);
 	if (dev_acc == NULL) {
 		pr_err("add_delta_to_list: motion is NULL.\n");
+		write_unlock(&lock_delta);
 		return -1;
 	}
 
-	/*temp = kmalloc(sizeof(struct delta_elt), GFP_KERNEL);
-	if (temp == NULL)
-		return -1;
-	*/
-	if (prev == NULL) {
-		pr_err("add_delta_to_list: prev is NULL.\n");
-		return -1;
-	}
-
-	if (delta_q_len >= WINDOW) {
-		/*pr_info("delta q is full, will pop one\n");*/
+	if (temp == NULL) {
+	//if (delta_q_len >= WINDOW)
+		pr_info("delta q is full, will pop one\n");
 		temp = list_first_entry(&delta_q_head, struct delta_elt, list);
 		if (temp == NULL) {
 			pr_err("add_delta_to_list: could not get 1st entry.\n");
+			write_unlock(&lock_delta);
 			return -1;
 		}
 		list_del(&temp->list);
-		/*pr_info("popped: %d %d %d\n", temp->dx, temp->dy, temp->dz);*/
+		pr_info("popped: %d %d %d\n", temp->dx, temp->dy, temp->dz);
 		delta_q_len--;
 	} else {
-		/*pr_info("delta_q is not full\n");*/
+		pr_info("delta_q is not full\n");
 	}
+	//for debugging
+	pr_info("Came here 2 temp = %x dev_acc = %x\n",
+			(unsigned int)temp,
+			(unsigned int)dev_acc);
+	temp->dx = dev_acc->x - prev.x;
+	temp->dy = dev_acc->y - prev.y;
+	temp->dz = dev_acc->z - prev.z;
 
-	temp->dx = dev_acc->x - prev->x;
-	temp->dy = dev_acc->y - prev->y;
-	temp->dz = dev_acc->z - prev->z;
-
+	pr_info("Came here 3\n");
 	if (temp->dx < 0)
 		temp->dx = -temp->dx;
 	if (temp->dy < 0)
@@ -294,21 +298,27 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 	if (temp->dz < 0)
 		temp->dz = -temp->dz;
 
+	pr_info("Came here 4\n");
 	if (temp->dx + temp->dy + temp->dz > NOISE)
 		temp->frq = 1;
 	else
 		temp->frq = 0;
 
-	prev->x = dev_acc->x;
-	prev->y = dev_acc->y;
-	prev->z = dev_acc->z;
+	pr_info("Came here 5\n");
+	prev.x = dev_acc->x;
+	prev.y = dev_acc->y;
+	prev.z = dev_acc->z;
 
+	pr_info("Came here 6\n");
 	list_add_tail(&temp->list, &delta_q_head);
 
+	pr_info("Came here 7\n");
 	pr_info("Pushed %d %d %d\n", temp->dx, temp->dy, temp->dz);
 	delta_q_len++;
 	/*pr_info("current size of delta_q: %d\n", delta_q_len);*/
 
+	pr_info("Came here 8\n");
+	write_unlock(&lock_delta);
 	return 0;
 }
 /*

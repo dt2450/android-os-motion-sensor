@@ -10,8 +10,6 @@
 #include <linux/mylist.h>
 
 static atomic_t counter = ATOMIC_INIT(0);
-DEFINE_RWLOCK(lock_delta);
-DEFINE_RWLOCK(lock_event);
 static DECLARE_WAIT_QUEUE_HEAD(__queue);
 /*
  * Set current device acceleration in the kernel.
@@ -26,11 +24,10 @@ SYSCALL_DEFINE1(set_acceleration,
 			struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
+	struct delta_elt *temp = NULL;
 	int returnVal;
 
-	write_lock(&lock_delta);
 	returnVal = init_delta_q();
-	write_unlock(&lock_delta);
 	if (returnVal == -1) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
@@ -50,9 +47,14 @@ SYSCALL_DEFINE1(set_acceleration,
 	}
 
 	pr_debug("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
-	write_lock(&lock_event);
-	add_delta_to_list(k_acc);
-	write_unlock(&lock_event);
+
+	if (delta_q_len <= WINDOW) {
+		temp = kmalloc(sizeof(struct delta_elt), GFP_KERNEL);
+		if (temp == NULL)
+			return -ENOMEM;
+	}
+
+	add_delta_to_list(k_acc, temp);
 
 	kfree(k_acc);
 	return 0;
@@ -70,9 +72,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	struct acc_motion *currentEvent = NULL;
 	int returnVal;
 
-	write_lock(&lock_event);
 	returnVal = init_event_q();
-	write_unlock(&lock_event);
 
 	if (returnVal != 0) {
 		pr_err("could not initialize queue");
@@ -91,10 +91,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 		return -EFAULT;
 	}
 
-	/*TODO: grab write lock on event_q*/
-	write_lock(&lock_event);
 	returnVal = add_event_to_list(currentEvent, atomic_read(&counter));
-	write_unlock(&lock_event);
 
 	if (returnVal == -1) {
 		pr_err("could not add event to the event list");
@@ -116,7 +113,9 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 
 	if (event_id <= atomic_read(&counter)) {
 		/*get event type from the list api*/
+		read_lock(&lock_event);
 		currentEvent = get_event_using_id(event_id);
+		read_unlock(&lock_event);
 	}
 	if (currentEvent == NULL) {
 		pr_err("accevt_wait: event Id not found");
@@ -164,11 +163,14 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
+	struct delta_elt *temp = NULL;
 	struct event_elt **events = NULL;
 	int dx, dy, dz, freq;
 	int status, len, i;
 
-	int returnVal = init_delta_q();
+	int returnVal = -1;
+
+	returnVal = init_delta_q();
 
 	if (returnVal == -1) {
 		pr_err("accevt_signal: Not enough memory!");
@@ -189,15 +191,17 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	}
 
 	pr_debug("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
-	/*TODO:grab write lock on delta_q*/
-	add_delta_to_list(k_acc);
-	/*TODO:release write lock on delta_q*/
-	/*TODO:grab read lock on delta_q*/
+
+	if (delta_q_len <= WINDOW) {
+		temp = kmalloc(sizeof(struct delta_elt), GFP_KERNEL);
+		if (temp == NULL)
+			return -ENOMEM;
+	}
+
+	add_delta_to_list(k_acc, temp);
 
 	/* Add all delta values exceeding NOISE within the current WINDOW */
-	// take read lock on the list
 	freq = add_deltas(&dx, &dy, &dz);
-	//release lock on the list
 	if (freq == -1) {
 		pr_err("accevt_signal: error occured while calculating cumulative deltas");
 		kfree(k_acc);
@@ -205,6 +209,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	}
 
 	/* Get a list of all events that satisfy delta/frq values */
+	//TODO: Take locks either here or inside the function: malloc inside
 	events = check_events_occurred(dx, dy, dz, freq, &status, &len);
 	pr_debug("status of returned events is:: %d", status);
 	if (status == -1) {

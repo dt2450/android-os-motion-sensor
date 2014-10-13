@@ -4,6 +4,10 @@
 #include <linux/acceleration.h>
 #include <linux/list.h>
 
+extern int delta_q_len;
+extern rwlock_t lock_delta;
+extern rwlock_t lock_event;
+
 struct delta_elt
 {
 	int dx;
@@ -36,7 +40,7 @@ int update_wait_ptr(void *wait_ptr, int pid);
 struct event_elt *get_event_using_id(int event_id);
 
 int init_delta_q(void);
-int add_delta_to_list(struct dev_acceleration *dev_acc);
+int add_delta_to_list(struct dev_acceleration *dev_acc, struct delta_elt *temp);
 int add_deltas(int *DX, int *DY, int *DZ);
 
 #endif /* __LINUX_MYLIST_H */
