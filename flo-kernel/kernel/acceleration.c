@@ -25,7 +25,22 @@ SYSCALL_DEFINE1(set_acceleration,
 {
 	struct dev_acceleration *k_acc = NULL;
 	struct delta_elt *temp = NULL;
-	int returnVal;
+	int returnVal, pid;
+
+	read_lock(&tasklist_lock);
+        if (current == NULL || current->real_cred ==NULL) {
+                pr_err("set_acceleration: current task is invalid\n");
+                read_unlock(&tasklist_lock);
+                return -EFAULT;
+        }
+
+        pid = current->real_cred->uid;
+        read_unlock(&tasklist_lock);
+
+        if (pid != 0) {
+                pr_err("set_acceleration: called by non-root user !!\n");
+                return -EACCES;
+        }
 
 	returnVal = init_delta_q();
 	if (returnVal == -1) {
@@ -166,9 +181,23 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	struct delta_elt *temp = NULL;
 	struct event_elt **events = NULL;
 	int dx, dy, dz, freq;
-	int status, len, i;
-
+	int status, len, i, pid;
 	int returnVal = -1;
+
+	read_lock(&tasklist_lock);
+        if (current == NULL || current->real_cred ==NULL) {
+                pr_err("set_acceleration: current task is invalid\n");
+                read_unlock(&tasklist_lock);
+                return -EFAULT;
+        }
+
+        pid = current->real_cred->uid;
+        read_unlock(&tasklist_lock);
+
+        if (pid != 0) {
+                pr_err("set_acceleration: called by non-root user !!\n");
+                return -EACCES;
+        }
 
 	returnVal = init_delta_q();
 
