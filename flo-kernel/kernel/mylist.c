@@ -51,7 +51,7 @@ int init_delta_q(void)
 /*Initializes the event queue*/
 int init_event_q(void)
 {
-	if (event_q_len == 0) {
+	if (head_ptr == NULL || head_ptr->next == NULL) {
 		pr_info("initializing event_q_head for the 1st time.\n");
 		INIT_LIST_HEAD(&head);
 		head_ptr = &head;

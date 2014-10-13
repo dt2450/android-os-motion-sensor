@@ -104,6 +104,7 @@ int main(int argc, char **argv)
 
 			int event_id = 0;
 			int motion_type = i%7;
+			int ret_val;
 			struct acc_motion *motion = (struct acc_motion *) malloc
 				(sizeof(struct acc_motion));
 			//for debugging
@@ -169,9 +170,10 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			//for debugging
-			if (syscall(__NR_accevt_wait, event_id) != 0) {
-				printf("3. Process %d encountered error: %s\n",
-						strerror(errno));
+			ret_val = syscall(__NR_accevt_wait, event_id);
+			if (ret_val != 0) {
+				printf("3. Process %d encountered error: %d %s\n",
+						ret_val, strerror(errno));
 				exit(-1);
 			} else {
 				//for debugging
