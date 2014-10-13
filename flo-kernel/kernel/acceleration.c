@@ -125,18 +125,18 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 	/*TODO: block processes on this event id*/
 	pr_debug("goint into while loop for wait, event id is:%d\n",
 			currentEvent->id);
-	while (!currentEvent->condition) {
+	while (!atomic_read(&(currentEvent->condition))) {
 		DEFINE_WAIT(__wait);
 
 		pr_debug("accevt_wait: calling prepare to wait---: %d\n",
-				currentEvent->condition);
+				atomic_read(&(currentEvent->condition)));
 		prepare_to_wait(&__queue, &__wait, TASK_INTERRUPTIBLE);
-		if (!currentEvent->condition)
+		if (!atomic_read(&(currentEvent->condition)))
 			schedule();
 		finish_wait(&__queue, &__wait);
 	}
 	pr_debug("accevt_wait: Came out of while loop\n");
-	if (currentEvent->normal_wakeup == 0) {
+	if (atomic_read(&(currentEvent->normal_wakeup)) == 0) {
 		pr_err("accevt_wait: No shake was detected\n");
 		return -EINVAL;
 	}
@@ -215,12 +215,12 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 		for (i = 0; i < len; i++) {
 			/*TODO:  wake up processes from the queue!*/
 			/* Remove the event from the event queue */
-			events[i]->condition = 1;
+			atomic_set(&(events[i]->condition), 1);
 			/*setting flag for normal wake up - process
 			will print shake detected*/
-			events[i]->normal_wakeup = 1;
+			atomic_set(&(events[i]->normal_wakeup), 1);
 			pr_debug("setting the condition to : %d",
-				events[i]->condition);
+				atomic_read(&(events[i]->condition)));
 			pr_debug("for event id: %d\n", events[i]->id);
 		}
 	}
@@ -246,7 +246,7 @@ SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 		/*waking up processes waiting on this event
 		but normal_wakeup not set hence processes will
 		not print shake detected*/
-		event_to_destroy->condition = 1;
+		atomic_set(&(event_to_destroy->condition), 1);
 		wake_up_all(&__queue);
 		returnVal = remove_event_using_id(event_id);
 		write_unlock(&lock_event);
