@@ -101,6 +101,12 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 	return 0;
 }
 
+
+/*
+* Takes actual pointer to event.
+* Removes the event from the list, and then FREES it,
+* so don't access the event after calling this function on it.
+*/
 int remove_event_from_list(struct event_elt *event)
 {
 	if (event == NULL) {

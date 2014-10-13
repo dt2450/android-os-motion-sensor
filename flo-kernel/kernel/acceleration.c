@@ -115,24 +115,26 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		currentEvent = get_event_using_id(event_id);	
 	}
 	if (currentEvent == NULL) {
-		printk("event Id not found");
+		printk("accevt_wait: event Id not found");
 		return -EFAULT;
 	} else {
 		/*TODO: block processes on this event id*/
 		printk("created a queue\n");
 		while (!currentEvent->condition) {
 			DEFINE_WAIT(__wait);
-			printk("calling prepare to wait---: %d\n",currentEvent->condition);
+			printk("accevt_wait: calling prepare to wait---: %d\n",currentEvent->condition);
 			prepare_to_wait(&__queue,&__wait,TASK_INTERRUPTIBLE);
 			if (!currentEvent->condition)
 				schedule();
 			finish_wait(&__queue,&__wait);
 		}
-		printk("before finish wait\n");
+		printk("accevt_wait: Came out of while loop\n");
+		/*
 		printk("wait done removing event from the list, Event_id is: %d\n",event_id);
 		remove_event_from_list(currentEvent);
 		printk("x=%d, y=%d, z=%d\n", currentEvent->dx, currentEvent->dy,
 		 currentEvent->dz);
+		*/
 	}
 	return 0;
 }
