@@ -1,0 +1,22 @@
+  FILES SUBMITTED
+===================
+
+- flo-kernel/arch/arm/kernel/calls.S: system call entries.
+- flo-kernel/arch/arm/include/asm/unistd.h: declaraing constants for syscall numbers.
+- flo-kernel/include/linux/acceleration.h: structures and constants for syscalls.
+- flo-kernel/include/linux/mylist.h: structures, interfaces and constants for list operations.
+- flo-kernel/kernel/acceleration.c: implementation os all syscalls.
+- flo-kernel/kernel/mylist.c: implementation of all list operaations.
+- flo-kernel/kernel/Makefile: makefile to build everything.
+
+- acceleration_d/accelerationd.c: daemon that just calls set_acceleration (for part 2)
+- acceleration_d/daemon_part3.c: daemon that calls signal (for part 4)
+
+- test/test.c: some tests for event queue.
+- test/test_acc.c: main test program that spawns children, creates events, goes to wait, and prints if shakes are detected or not on wakeup.
+
+
+  REFERENCES
+=============
+1. http://tuxthink.blogspot.com/2014/07/creating-queue-in-linux-kernel-using.html
+
