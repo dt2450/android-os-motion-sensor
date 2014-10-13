@@ -160,31 +160,38 @@ int main(int argc, char **argv)
 			printf("event id is %d\n", event_id);
 			if (event_id == -1) {
 				printf("1. Process %d encountered error: %s\n",
+						getpid(),
 						strerror(errno));
 				exit(-1);
 			}
 			if (write(pipe_fd[1], &event_id,
 					sizeof(event_id)) == -1) {
 				printf("2. Process %d encountered error: %s\n",
+						getpid(),
 						strerror(errno));
 				exit(-1);
 			}
 			//for debugging
 			ret_val = syscall(__NR_accevt_wait, event_id);
-			if (ret_val != 0) {
-				printf("3. Process %d encountered error: %d %s\n",
-						ret_val, strerror(errno));
-				exit(-1);
-			} else {
+			if (ret_val == 1) {
+				printf("3. Process %d woke up, but no shake detected.\n",
+						getpid());
+				exit(0);
+			} else if (ret_val == 0){
 				//for debugging
 				
-				printf("%d Detected a x:%d y:%d z:%d shake\n",
+				printf("3. Process %d detected a x:%d y:%d z:%d shake\n",
 						getpid(),
 						motion->dlt_x,
 						motion->dlt_y,
 						motion->dlt_z);
+				exit(0);
+			} else {
+				printf("3. Process %d encountered error: %s\n",
+						getpid(),
+                                                strerror(errno));
+				exit(-1);
 			}
-			exit(0);
 		} else {
 			/* parent process */
 			child_pid_array[i] = pid;
