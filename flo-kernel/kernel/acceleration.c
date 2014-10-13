@@ -11,7 +11,7 @@
 
 static atomic_t counter = ATOMIC_INIT(0);
 
-static DECLARE_WAIT_QUEUE_HEAD(queue);
+static DECLARE_WAIT_QUEUE_HEAD(__queue);
 /*
  * Set current device acceleration in the kernel.
  * The parameter acceleration is the pointer to the address
@@ -106,14 +106,14 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		return -EFAULT;
 	} else {
 		/*TODO: block processes on this event id*/
-		DEFINE_WAIT(wait);
 		printk("created a queue\n");
 		while (!currentEvent->condition) {
+			DEFINE_WAIT(__wait);
 			printk("calling prepare to wait---: %d\n",currentEvent->condition);
-			prepare_to_wait(&queue,&wait,TASK_INTERRUPTIBLE);
+			prepare_to_wait(&__queue,&__wait,TASK_INTERRUPTIBLE);
 			if (!currentEvent->condition)
 				schedule();
-		finish_wait(&queue,&wait);
+			finish_wait(&__queue,&__wait);
 		}
 		printk("before finish wait\n");
 		printk("wait done removing event from the list, Event_id is: %d\n",event_id);
