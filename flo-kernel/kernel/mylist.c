@@ -165,6 +165,7 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
         event->dz = motion->dlt_z;
         event->frq = motion->frq;
 	event->id = event_id;
+	event->condition = 0;
 	event->wait_ptr = NULL;
 
 	read_lock(&tasklist_lock);
@@ -192,7 +193,7 @@ int remove_event_from_list(struct event_elt *event)
 		return -1;
 	}
 
-        printk("Going to delete event %d %d %d %d\n", event->dx, event->dy, event->dz, event->frq);
+        printk("remove_event_from_list: Going to delete event %d %d %d %d\n", event->dx, event->dy, event->dz, event->frq);
 
         if (event_q_len == 0) {
                 pr_err("remove_event_from_list: event queue underflow\n");
@@ -212,6 +213,11 @@ struct event_elt *get_event_using_id(int event_id)
 
 	if (event_q_len == 0) {
 		pr_err("get_event_using_id: No events in event_q\n");
+		return NULL;
+	}
+
+	if (head_ptr == NULL) {
+		pr_err("get_event_using_id: event_q head_ptr is NULL\n");
 		return NULL;
 	}
 
@@ -239,6 +245,11 @@ int remove_event_using_id(int event_id)
 
 	if (event_q_len == 0) {
 		pr_err("remove_event_using_id: No events in event_q\n");
+		return -1;
+	}
+
+	if (head_ptr == NULL) {
+		pr_err("remove_event_using_id: event_q head_ptr is NULL\n");
 		return -1;
 	}
 
@@ -279,6 +290,11 @@ int add_deltas(int *DX, int *DY, int *DZ)
 	*DZ = 0;
 	i = 0;
 
+	if (delta_q_head_ptr == NULL) {
+		pr_err("add_deltas: delta_q_head_ptr is NULL\n");
+		return -1;
+	}
+
 	pr_info("In add_deltas, summing ........\n");
 	list_for_each(p, delta_q_head_ptr) {
 		d = list_entry(p, struct delta_elt, list);
@@ -286,7 +302,7 @@ int add_deltas(int *DX, int *DY, int *DZ)
 			pr_err("add_deltas: retrieved NULL from delta_q\n");
 			return -1;
 		}
-		pr_err("Elt %d: %d %d %d %d", i, d->dx, d->dy, d->dz, d->frq);
+		//pr_err("Elt %d: %d %d %d %d", i, d->dx, d->dy, d->dz, d->frq);
 		
 		if (d->frq == 1) {
 			*DX += d->dx;
@@ -375,20 +391,34 @@ struct event_elt **check_events_occurred(int DX, int DY, int DZ, int FRQ, int *s
 	struct event_elt **events;
 	int count, index;
 
+	printk("check_events_occurred: checking stuff\n");
+	if (head_ptr == NULL) {
+		pr_err("check_event_occurred: event_q ead_ptr is NULL\n");
+		return NULL;
+	}
+
+	if (head_ptr->next == NULL) {
+                pr_err("check_event_occurred: event_q head_ptr->next is NULL\n");
+                return NULL;
+        }
+
 	if (event_q_len == 0) {
 		pr_err("check_event_occurred: No events in event_q\n");
 		*status = 1;
 		return NULL;
 	}
 
+	printk("check_events_occurred: going to start loop\n");
 	count = 0;
 	list_for_each(p, head_ptr->next) {
+		printk("check_events_occurred: in loop\n");
 		m = list_entry(p, struct event_elt, list);
 		if (m == NULL) {
 			pr_err("check_event_occurred: retrieved NULL from event q\n");
 			*status = -1;
 			return NULL;
 		}
+		printk("check_events_occurred: checking condition\n");
 		if (DX >= m->dx && DY >= m->dy && DZ >= m->dz && FRQ >= m->frq) {
 			pr_err("check_event_occurred: found event with id %d: %d %d %d\n", m->id, m->dx, m->dy, m->dz);
 			count++;	
@@ -408,7 +438,7 @@ struct event_elt **check_events_occurred(int DX, int DY, int DZ, int FRQ, int *s
 		*status = -1;
 		return NULL;
 	}
-
+	printk("check_events_occurred: going in loop again\n");
 	index = 0;
 	list_for_each(p, head_ptr->next) {
 		m = list_entry(p, struct event_elt, list);
