@@ -66,7 +66,12 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 {
 	struct acc_motion *currentEvent = NULL;
-	int returnVal = init_event_q();
+	int returnVal;
+	
+	write_lock(&lock_event);
+	returnVal = init_event_q();
+	write_unlock(&lock_event);
+	
 	if (returnVal != 0){
 		pr_err("could not initialize queue");
 		return -EFAULT;
@@ -84,7 +89,11 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	}
 	
 	/*TODO: grab write lock on event_q*/
-	if (add_event_to_list(currentEvent,atomic_read(&counter)) == -1){
+	write_lock(&lock_event);
+	returnVal = add_event_to_list(currentEvent,atomic_read(&counter));
+	write_unlock(&lock_event);
+
+	if (returnVal == -1){
 		pr_err("could not add event to the event list");
 		return -EFAULT;
 	} 
@@ -214,9 +223,13 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 
 SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 {
+	int returnVal;
+
 	if (event_id <= atomic_read(&counter)) {
 		/*TODO:grab write lock on event_q*/
-		int returnVal = remove_event_using_id(event_id);
+		write_lock(&lock_event);
+		returnVal = remove_event_using_id(event_id);
+		write_unlock(&lock_event);
 		/*TODO:release write lock on event_q*/
 		if(returnVal == -1){
 			return -EFAULT;
