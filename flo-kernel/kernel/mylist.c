@@ -265,10 +265,10 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 		return -1;
 	}
 
-	temp = kmalloc(sizeof(struct delta_elt), GFP_KERNEL);
+	/*temp = kmalloc(sizeof(struct delta_elt), GFP_KERNEL);
 	if (temp == NULL)
 		return -1;
-
+	*/
 	if (prev == NULL) {
 		pr_err("add_delta_to_list: prev is NULL.\n");
 		return -1;

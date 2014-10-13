@@ -195,7 +195,9 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	/*TODO:grab read lock on delta_q*/
 
 	/* Add all delta values exceeding NOISE within the current WINDOW */
+	// take read lock on the list
 	freq = add_deltas(&dx, &dy, &dz);
+	//release lock on the list
 	if (freq == -1) {
 		pr_err("accevt_signal: error occured while calculating cumulative deltas");
 		kfree(k_acc);

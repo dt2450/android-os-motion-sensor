@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <hardware/hardware.h>
 #include <hardware/sensors.h> /* <-- This is a good place to look! */
-#include "../flo-kernel/include/linux/akm8975.h" 
+#include "../flo-kernel/include/linux/akm8975.h"
 #include "acceleration.h"
 
 /* from sensors.c */
@@ -54,7 +54,8 @@ static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
     const size_t numEventMax = 16;
     const size_t minBufferSize = numEventMax;
     sensors_event_t buffer[minBufferSize];
-	ssize_t count = sensors_device->poll(sensors_device, buffer, minBufferSize);
+    ssize_t count = sensors_device->poll(sensors_device, buffer,
+			minBufferSize);
 	int i;
 
 	for (i = 0; i < count; ++i) {
@@ -84,10 +85,11 @@ int main(int argc, char **argv)
 
 	pid_t pid, sid;
 
-	
+
 
 	/* Fill in daemon implementation around here */
-	acc = (struct dev_acceleration *) malloc(sizeof(struct dev_acceleration));
+	acc = (struct dev_acceleration *) malloc(
+			sizeof(struct dev_acceleration));
 	if (acc == NULL) {
 		perror("accelerationd: Unable to allocate memory.");
 		exit(EXIT_FAILURE);
@@ -122,7 +124,7 @@ int main(int argc, char **argv)
 
 	while (1) {
 		poll_sensor_data(sensors_device);
-		
+
 		if (usleep(TIME_INTERVAL * 1000) == -1) {
 			perror("accelerationd: couldn't sleep error is: ");
 			perror(strerror(errno));
@@ -139,7 +141,7 @@ int main(int argc, char **argv)
 static int open_sensors(struct sensors_module_t **mSensorModule,
 			struct sensors_poll_device_t **mSensorDevice)
 {
-   
+
 	int err = hw_get_module(SENSORS_HARDWARE_MODULE_ID,
 				     (hw_module_t const**)mSensorModule);
 
@@ -162,10 +164,12 @@ static int open_sensors(struct sensors_module_t **mSensorModule,
 		return -1;
 
 	const struct sensor_t *list;
-	ssize_t count = (*mSensorModule)->get_sensors_list(*mSensorModule, &list);
+	ssize_t count = (*mSensorModule)->get_sensors_list
+						(*mSensorModule, &list);
 	size_t i;
 	for (i=0 ; i<(size_t)count ; i++)
-		(*mSensorDevice)->setDelay(*mSensorDevice, list[i].handle, 200 * 1000000);
+		(*mSensorDevice)->setDelay(*mSensorDevice, list[i].handle,
+				200 * 1000000);
 		(*mSensorDevice)->activate(*mSensorDevice, list[i].handle, 1);
 
 	return 0;
