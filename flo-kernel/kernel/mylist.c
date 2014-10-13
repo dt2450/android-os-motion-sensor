@@ -122,6 +122,7 @@ int remove_event_from_list(struct event_elt *event)
 
         list_del(&event->list);
 	event_q_len--;
+	pr_err("remove_event_from_list: successfully removed\n");
         
 	return 0;
 }
@@ -148,7 +149,7 @@ struct event_elt *get_event_using_id(int event_id)
 			return NULL;
 		}
 		if (m->id == event_id) {
-			pr_err("get_event_using_id: found event with id %d: %d %d %d\n", event_id, m->dx, m->dy, m->dz);
+			//pr_err("get_event_using_id: found event with id %d: %d %d %d\n", event_id, m->dx, m->dy, m->dz);
 			return m;
 		}
 	}
@@ -181,11 +182,11 @@ int remove_event_using_id(int event_id)
 		}
 		if (m->id == event_id) {
 			found = 1;
-			pr_err("remove_event_using_id: found event with id %d: %d %d %d\n", event_id, m->dx, m->dy, m->dz);
+			//pr_err("remove_event_using_id: found event with id %d: %d %d %d\n", event_id, m->dx, m->dy, m->dz);
 			ret = remove_event_from_list(m);
 			if (ret == -1)
 				return -1;
-			pr_err("remove_event_using_id: successfully removed event\n");
+			//pr_err("remove_event_using_id: successfully removed event\n");
 			break;
 		}
 	}
@@ -215,7 +216,7 @@ int add_deltas(int *DX, int *DY, int *DZ)
 		return -1;
 	}
 
-	pr_info("In add_deltas, summing ........\n");
+	//pr_info("In add_deltas, summing ........\n");
 	list_for_each(p, delta_q_head_ptr) {
 		d = list_entry(p, struct delta_elt, list);
 		if (d == NULL) {
@@ -260,17 +261,17 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 	}
 
         if (delta_q_len >= WINDOW) {
-		pr_info("delta q is full, will pop one\n");
+		//pr_info("delta q is full, will pop one\n");
 		temp = list_first_entry(&delta_q_head, struct delta_elt, list);
 		if (temp == NULL) {
 			pr_err("add_delta_to_list: could not get 1st entry.\n");
 			return -1;
 		}
 		list_del(&temp->list);
-		pr_info("popped: %d %d %d\n", temp->dx, temp->dy, temp->dz);
+		//pr_info("popped: %d %d %d\n", temp->dx, temp->dy, temp->dz);
 		delta_q_len--;
         } else {
-		pr_info("delta_q is not full\n");
+		//pr_info("delta_q is not full\n");
 	}
 
 	temp->dx = dev_acc->x - prev->x;
@@ -294,7 +295,7 @@ int add_delta_to_list(struct dev_acceleration *dev_acc)
 	
 	pr_info("Pushed %d %d %d\n", temp->dx, temp->dy, temp->dz);
 	delta_q_len++;
-	pr_info("current size of delta_q: %d\n", delta_q_len);
+	//pr_info("current size of delta_q: %d\n", delta_q_len);
 
         return 0;
 }
@@ -311,7 +312,7 @@ struct event_elt **check_events_occurred(int DX, int DY, int DZ, int FRQ, int *s
 	struct event_elt **events;
 	int count, index;
 
-	printk("check_events_occurred: checking stuff\n");
+	//printk("check_events_occurred: checking stuff\n");
 	if (head_ptr == NULL) {
 		pr_err("check_event_occurred: event_q ead_ptr is NULL\n");
 		return NULL;
@@ -328,17 +329,17 @@ struct event_elt **check_events_occurred(int DX, int DY, int DZ, int FRQ, int *s
 		return NULL;
 	}
 
-	printk("check_events_occurred: going to start loop\n");
+	//printk("check_events_occurred: going to start loop\n");
 	count = 0;
 	list_for_each(p, head_ptr->next) {
-		printk("check_events_occurred: in loop\n");
+		//printk("check_events_occurred: in loop\n");
 		m = list_entry(p, struct event_elt, list);
 		if (m == NULL) {
 			pr_err("check_event_occurred: retrieved NULL from event q\n");
 			*status = -1;
 			return NULL;
 		}
-		printk("check_events_occurred: checking condition\n");
+		//printk("check_events_occurred: checking condition\n");
 		if (DX >= m->dx && DY >= m->dy && DZ >= m->dz && FRQ >= m->frq) {
 			pr_err("check_event_occurred: found event with id %d: %d %d %d\n", m->id, m->dx, m->dy, m->dz);
 			count++;	
@@ -358,7 +359,7 @@ struct event_elt **check_events_occurred(int DX, int DY, int DZ, int FRQ, int *s
 		*status = -1;
 		return NULL;
 	}
-	printk("check_events_occurred: going in loop again\n");
+	//printk("check_events_occurred: going in loop again\n");
 	index = 0;
 	list_for_each(p, head_ptr->next) {
 		m = list_entry(p, struct event_elt, list);
