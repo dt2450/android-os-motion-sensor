@@ -6,7 +6,7 @@
 #include <sys/syscall.h>
 #include <errno.h>
 
-#define DEFAULT_N			2
+#define DEFAULT_N			10
 #define MAX_N				1024
 #define DEFAULT_TIMEOUT_IN_SECS		60
 #define __NR_set_acceleration		378
