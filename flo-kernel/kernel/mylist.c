@@ -317,11 +317,13 @@ struct event_elt **check_events_occurred(int DX, int DY, int DZ, int FRQ, int *s
 	//printk("check_events_occurred: checking stuff\n");
 	if (head_ptr == NULL) {
 		pr_err("check_event_occurred: event_q ead_ptr is NULL\n");
+		*status = -1;
 		return NULL;
 	}
 
 	if (head_ptr->next == NULL) {
                 pr_err("check_event_occurred: event_q head_ptr->next is NULL\n");
+		*status = -1;
                 return NULL;
         }
 
