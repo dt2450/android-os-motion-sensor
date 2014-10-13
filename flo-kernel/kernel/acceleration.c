@@ -131,7 +131,7 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		printk("accevt_wait: Came out of while loop\n");
 		if (currentEvent->normal_wakeup == 0) {
 			printk("accevt_wait: No shake was detected\n");
-			return 1;
+			return -EINVAL;
 		}
 		/*
 		printk("wait done removing event from the list, Event_id is: %d\n",event_id);

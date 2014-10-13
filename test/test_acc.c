@@ -173,7 +173,8 @@ int main(int argc, char **argv)
 			}
 			//for debugging
 			ret_val = syscall(__NR_accevt_wait, event_id);
-			if (ret_val == 1) {
+			/* check if its -EINVAL */
+			if (ret_val == -22) {
 				printf("3. Process %d woke up, but no shake detected.\n",
 						getpid());
 				exit(0);
