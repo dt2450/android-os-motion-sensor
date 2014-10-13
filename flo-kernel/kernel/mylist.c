@@ -269,8 +269,8 @@ int add_delta_to_list(struct dev_acceleration *dev_acc, struct delta_elt *temp)
 		return -1;
 	}
 
+	/*if (delta_q_len >= WINDOW)*/
 	if (temp == NULL) {
-	//if (delta_q_len >= WINDOW)
 		pr_info("delta q is full, will pop one\n");
 		temp = list_first_entry(&delta_q_head, struct delta_elt, list);
 		if (temp == NULL) {
@@ -284,7 +284,7 @@ int add_delta_to_list(struct dev_acceleration *dev_acc, struct delta_elt *temp)
 	} else {
 		pr_info("delta_q is not full\n");
 	}
-	//for debugging
+	/*for debugging*/
 	pr_info("Came here 2 temp = %x dev_acc = %x\n",
 			(unsigned int)temp,
 			(unsigned int)dev_acc);
