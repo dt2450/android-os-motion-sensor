@@ -22,6 +22,7 @@ struct event_elt
 	unsigned int frq;
 	int id;
 	int condition;
+	int normal_wakeup;
 
 	int pid;
 	void* wait_ptr;
