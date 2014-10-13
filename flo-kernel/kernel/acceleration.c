@@ -114,6 +114,7 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 			if (!currentEvent->condition)
 				schedule();
 		}
+		printk("before finish wait\n");
 		finish_wait(&queue,&wait);
 		printk("wait done removing event from the list\n");
 		remove_event_from_list(currentEvent);
