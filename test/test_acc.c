@@ -184,7 +184,6 @@ int main(int argc, char **argv)
 				exit(0);
 			} else if (ret_val == 0){
 				//for debugging
-				
 				printf("3. Process %d detected a x:%d y:%d z:%d shake\n",
 						getpid(),
 						motion->dlt_x,
