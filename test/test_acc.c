@@ -6,7 +6,7 @@
 #include <sys/syscall.h>
 #include <errno.h>
 
-#define DEFAULT_N			10
+#define DEFAULT_N			2
 #define MAX_N				1024
 #define DEFAULT_TIMEOUT_IN_SECS		60
 #define __NR_set_acceleration		378
@@ -155,7 +155,9 @@ int main(int argc, char **argv)
 			srand(time(NULL));
 			motion->frq = (rand()%20)+1;
 			/* create the event with the motion*/
+			printf("Creating event syscall\n", motion->dlt_x);
 			event_id = syscall(__NR_accevt_create, motion);
+			printf("after creating event syscall\n");
 			//for debugging
 			printf("event id is %d\n", event_id);
 			if (event_id == -1) {
@@ -172,9 +174,11 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			//for debugging
+			printf("before wait syscall\n");
 			ret_val = syscall(__NR_accevt_wait, event_id);
+			printf("retval is: %d && errnois %d\n", ret_val, errno); 
 			/* check if its -EINVAL */
-			if (ret_val == -22) {
+			if (ret_val == -1 && errno == EINVAL) {
 				printf("3. Process %d woke up, but no shake detected.\n",
 						getpid());
 				exit(0);

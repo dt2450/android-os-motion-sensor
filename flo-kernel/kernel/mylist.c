@@ -8,7 +8,7 @@
 #include <linux/list.h>
 #include <linux/kfifo.h>
 #include <linux/sched.h>
-
+#include  <linux/atomic.h>
 #include <linux/acceleration.h>
 #include <linux/mylist.h>
 
@@ -81,8 +81,10 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 	event->dz = motion->dlt_z;
 	event->frq = motion->frq;
 	event->id = event_id;
-	event->condition = 0;
-	event->normal_wakeup = 0;
+
+	atomic_set(&(event->condition), 0);
+	atomic_set(&(event->normal_wakeup), 0);
+
 
 	write_lock(&lock_event);
 	list_add(&event->list, head_ptr);

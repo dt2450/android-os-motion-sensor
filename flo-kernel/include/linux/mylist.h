@@ -25,8 +25,8 @@ struct event_elt
 	unsigned int dz;
 	unsigned int frq;
 	int id;
-	int condition;
-	int normal_wakeup;
+	atomic_t condition;
+	atomic_t normal_wakeup;
 
 	struct list_head list;
 };
