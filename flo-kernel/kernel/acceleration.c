@@ -187,8 +187,8 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 		for (i=0; i<len; i++) {
 			/*TODO:  wake up processes from the queue!*/
 			/* Remove the event from the event queue */
-			printk("setting the condition to 1");
 			events[i]->condition = 1;
+			printk("setting the condition to : %d\n",events[i]->condition);
 			/*returnVal = remove_event_from_list(events[i]);
 			if (returnVal == -1) {
 				pr_err("accevt_signal: error while removing events\n");
