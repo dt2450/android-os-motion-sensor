@@ -106,7 +106,7 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		return -EFAULT;
 	} else {
 		/*TODO: block processes on this event id*/
-		printk("created a queue\n");
+		printk("goint into while loop for wait, event id is:%d\n",currentEvent->id);
 		while (!currentEvent->condition) {
 			DEFINE_WAIT(__wait);
 			printk("calling prepare to wait---: %d\n",currentEvent->condition);
@@ -188,7 +188,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 			/*TODO:  wake up processes from the queue!*/
 			/* Remove the event from the event queue */
 			events[i]->condition = 1;
-			printk("setting the condition to : %d\n",events[i]->condition);
+			printk("setting the condition to : %d for event id: %d\n",events[i]->condition, events[i]->id);
 			/*returnVal = remove_event_from_list(events[i]);
 			if (returnVal == -1) {
 				pr_err("accevt_signal: error while removing events\n");
