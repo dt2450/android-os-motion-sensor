@@ -201,7 +201,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 			}*/
 		}
 	}
-
+	wake_up_all(&__queue);
 	/*TODO: release read lock on delta_q*/
 	kfree(k_acc);
 	return 0;
