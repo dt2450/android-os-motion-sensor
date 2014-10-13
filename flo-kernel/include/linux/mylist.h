@@ -24,9 +24,6 @@ struct event_elt
 	int condition;
 	int normal_wakeup;
 
-	int pid;
-	void* wait_ptr;
-
 	struct list_head list;
 };
 

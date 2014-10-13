@@ -87,18 +87,12 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 	event->id = event_id;
 	event->condition = 0;
 	event->normal_wakeup = 0;
-	event->wait_ptr = NULL;
 
-	read_lock(&tasklist_lock);
-	event->pid = current->pid;
-	read_unlock(&tasklist_lock);
-
-        
 	list_add(&event->list, head_ptr);
         head_ptr = &(event->list);
 	event_q_len++;
 
-	printk("Enqueued event %d: %d %d %d %d, with id=%d, pid=%d\n", event_q_len, event->dx, event->dy, event->dz, event->frq, event->id, event->pid);
+	printk("add_event_to_list: pushed event %d: %d %d %d %d, with id=%d\n", event_q_len, event->dx, event->dy, event->dz, event->frq, event->id);
 	return 0;
 }
 
