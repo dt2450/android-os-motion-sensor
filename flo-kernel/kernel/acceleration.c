@@ -129,6 +129,10 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 			finish_wait(&__queue,&__wait);
 		}
 		printk("accevt_wait: Came out of while loop\n");
+		if (currentEvent->normal_wakeup == 0) {
+			printk("accevt_wait: No shake was detected\n");
+			return 1;
+		}
 		/*
 		printk("wait done removing event from the list, Event_id is: %d\n",event_id);
 		remove_event_from_list(currentEvent);
@@ -136,6 +140,7 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		 currentEvent->dz);
 		*/
 	}
+	printk("accevt_wait: Shake was detected\n");
 	return 0;
 }
  
@@ -203,6 +208,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 			/*TODO:  wake up processes from the queue!*/
 			/* Remove the event from the event queue */
 			events[i]->condition = 1;
+			events[i]->normal_wakeup = 1;
 			printk("setting the condition to : %d for event id: %d\n",events[i]->condition, events[i]->id);
 			/*returnVal = remove_event_from_list(events[i]);
 			if (returnVal == -1) {

@@ -86,6 +86,7 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
         event->frq = motion->frq;
 	event->id = event_id;
 	event->condition = 0;
+	event->normal_wakeup = 0;
 	event->wait_ptr = NULL;
 
 	read_lock(&tasklist_lock);
@@ -128,7 +129,7 @@ int remove_event_from_list(struct event_elt *event)
 
 	list_del(&event->list);
 	pr_err("remove_event_from_list: going to free the event\n");
-	kfree(event);
+	//kfree(event);
 	event_q_len--;
 	pr_err("remove_event_from_list: successfully removed\n");
 
