@@ -113,17 +113,19 @@ int remove_event_from_list(struct event_elt *event)
 		return -1;
 	}
 
-        printk("remove_event_from_list: Going to delete event %d %d %d %d\n", event->dx, event->dy, event->dz, event->frq);
+	printk("remove_event_from_list: Going to delete event %d %d %d %d\n", event->dx, event->dy, event->dz, event->frq);
 
-        if (event_q_len == 0) {
-                pr_err("remove_event_from_list: event queue underflow\n");
-                return -1;
-        }
+	if (event_q_len == 0) {
+		pr_err("remove_event_from_list: event queue underflow\n");
+		return -1;
+	}
 
-        list_del(&event->list);
+	list_del(&event->list);
+	pr_err("remove_event_from_list: going to free the event\n");
+	kfree(event);
 	event_q_len--;
 	pr_err("remove_event_from_list: successfully removed\n");
-        
+
 	return 0;
 }
 
