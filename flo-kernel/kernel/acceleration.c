@@ -109,15 +109,17 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		return -EFAULT;
 	} else {
 		/*TODO: block processes on this event id*/
-
 		DECLARE_WAIT_QUEUE_HEAD(queue);
 		DEFINE_WAIT(wait);
+		printk("created a queue\n");
 		while(!currentEvent->condition) {
+			printk("calling prepare to wait---: %d\n",currentEvent->condition);
 			prepare_to_wait(&queue,&wait,TASK_INTERRUPTIBLE);
 			if(!currentEvent->condition)
 				schedule();
 			finish_wait(&queue,&wait);
 		}
+		printk("wait done removing event from the list\n");
 		remove_event_from_list(currentEvent);
 		printk("x=%d, y=%d, z=%d\n", currentEvent->dx, currentEvent->dy,
 		 currentEvent->dz);
