@@ -216,17 +216,12 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 			/*TODO:  wake up processes from the queue!*/
 			/* Remove the event from the event queue */
 			events[i]->condition = 1;
+			/*setting flag for normal wake up - process
+			will print shake detected*/
 			events[i]->normal_wakeup = 1;
 			pr_debug("setting the condition to : %d",
 				events[i]->condition);
 			pr_debug("for event id: %d\n", events[i]->id);
-			/*returnVal = remove_event_from_list(events[i]);
-			if (returnVal == -1) {
-				pr_err("accevt_signal: error ");
-				pr_err("while removing events\n");
-				kfree(k_acc);
-				return -EFAULT;
-			}*/
 		}
 	}
 	wake_up_all(&__queue);
@@ -243,17 +238,20 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 {
 	int returnVal;
+	struct event_elt event_to_destroy;
 
 	if (event_id <= atomic_read(&counter)) {
-		/*TODO:grab write lock on event_q*/
 		write_lock(&lock_event);
+		event_to_destroy = get_event_using_id(event_id);
+		/*waking up processes waiting on this event
+		but normal_wakeup not set hence processes will
+		not print shake detected*/
+		event_to_destroy->condition = 1;
+		wake_up_all(&__queue);
 		returnVal = remove_event_using_id(event_id);
 		write_unlock(&lock_event);
-		/*TODO:release write lock on event_q*/
-
 		if (returnVal == -1)
 			return -EFAULT;
-		/*TODO:destroy processes waiting on this event*/
 		return 0;
 	}
 	return -EFAULT;
