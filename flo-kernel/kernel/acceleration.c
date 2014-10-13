@@ -238,7 +238,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 {
 	int returnVal;
-	struct event_elt event_to_destroy;
+	struct event_elt *event_to_destroy;
 
 	if (event_id <= atomic_read(&counter)) {
 		write_lock(&lock_event);
