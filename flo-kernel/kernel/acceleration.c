@@ -66,7 +66,12 @@ SYSCALL_DEFINE1(set_acceleration, struct dev_acceleration __user *, acceleration
 SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 {
 	struct acc_motion *currentEvent = NULL;
-	int returnVal = init_event_q();
+	int returnVal;
+	
+	write_lock(&lock_event);
+	returnVal = init_event_q();
+	write_unlock(&lock_event);
+	
 	if (returnVal != 0){
 		pr_err("could not initialize queue");
 		return -EFAULT;
@@ -84,7 +89,11 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	}
 	
 	/*TODO: grab write lock on event_q*/
-	if (add_event_to_list(currentEvent,atomic_read(&counter)) == -1){
+	write_lock(&lock_event);
+	returnVal = add_event_to_list(currentEvent,atomic_read(&counter));
+	write_unlock(&lock_event);
+
+	if (returnVal == -1){
 		pr_err("could not add event to the event list");
 		return -EFAULT;
 	} 
@@ -106,24 +115,26 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		currentEvent = get_event_using_id(event_id);	
 	}
 	if (currentEvent == NULL) {
-		printk("event Id not found");
+		printk("accevt_wait: event Id not found");
 		return -EFAULT;
 	} else {
 		/*TODO: block processes on this event id*/
 		printk("goint into while loop for wait, event id is:%d\n",currentEvent->id);
 		while (!currentEvent->condition) {
 			DEFINE_WAIT(__wait);
-			printk("calling prepare to wait---: %d\n",currentEvent->condition);
+			printk("accevt_wait: calling prepare to wait---: %d\n",currentEvent->condition);
 			prepare_to_wait(&__queue,&__wait,TASK_INTERRUPTIBLE);
 			if (!currentEvent->condition)
 				schedule();
 			finish_wait(&__queue,&__wait);
 		}
-		printk("before finish wait\n");
+		printk("accevt_wait: Came out of while loop\n");
+		/*
 		printk("wait done removing event from the list, Event_id is: %d\n",event_id);
 		remove_event_from_list(currentEvent);
 		printk("x=%d, y=%d, z=%d\n", currentEvent->dx, currentEvent->dy,
 		 currentEvent->dz);
+		*/
 	}
 	return 0;
 }
@@ -214,9 +225,13 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 
 SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 {
+	int returnVal;
+
 	if (event_id <= atomic_read(&counter)) {
 		/*TODO:grab write lock on event_q*/
-		int returnVal = remove_event_using_id(event_id);
+		write_lock(&lock_event);
+		returnVal = remove_event_using_id(event_id);
+		write_unlock(&lock_event);
 		/*TODO:release write lock on event_q*/
 		if(returnVal == -1){
 			return -EFAULT;
