@@ -25,7 +25,7 @@ SYSCALL_DEFINE1(set_acceleration,
 {
 	struct dev_acceleration *k_acc = NULL;
 	struct delta_elt *temp = NULL;
-	int returnVal, pid;
+	int returnVal, uid;
 
 	read_lock(&tasklist_lock);
 	if (current == NULL || current->real_cred == NULL) {
@@ -34,10 +34,10 @@ SYSCALL_DEFINE1(set_acceleration,
 		return -EFAULT;
 	}
 
-	pid = current->real_cred->uid;
+	uid = current->real_cred->uid;
 	read_unlock(&tasklist_lock);
 
-	if (pid != 0) {
+	if (uid != 0) {
 		pr_err("set_acceleration: called by non-root user !!\n");
 		return -EACCES;
 	}
@@ -188,9 +188,8 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
 	struct delta_elt *temp = NULL;
-	struct event_elt **events = NULL;
 	int dx, dy, dz, freq;
-	int status, len, i, pid;
+	int pid;
 	int returnVal = -1;
 
 	read_lock(&tasklist_lock);
@@ -245,9 +244,15 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 		kfree(k_acc);
 		return -EFAULT;
 	}
-
+	returnVal = set_events_which_occurred(dx, dy, dz, freq);
+	if (returnVal == -1) {
+		pr_err("accevt_signal: could not set event conditions\n");
+		return -EFAULT;
+	}
 	/* Get a list of all events that satisfy delta/frq values */
 	/*TODO: Take locks either here or inside the function: malloc inside*/
+
+	/*
 	events = check_events_occurred(dx, dy, dz, freq, &status, &len);
 	pr_debug("status of returned events is:: %d", status);
 	if (status == -1) {
@@ -258,17 +263,14 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 
 	if (status == 0) {
 		for (i = 0; i < len; i++) {
-			/*TODO:  wake up processes from the queue!*/
-			/* Remove the event from the event queue */
 			atomic_set(&(events[i]->condition), 1);
-			/*setting flag for normal wake up - process
-			  will print shake detected*/
 			atomic_set(&(events[i]->normal_wakeup), 1);
 			pr_debug("setting the condition to : %d",
 					atomic_read(&(events[i]->condition)));
 			pr_debug("for event id: %d\n", events[i]->id);
 		}
 	}
+	*/
 	wake_up_all(&__queue);
 	/*TODO: release read lock on delta_q*/
 	kfree(k_acc);

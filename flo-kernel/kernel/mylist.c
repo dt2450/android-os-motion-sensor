@@ -370,6 +370,55 @@ int add_delta_to_list(struct dev_acceleration *dev_acc, struct delta_elt *temp)
 	write_unlock(&lock_delta);
 	return 0;
 }
+
+int set_events_which_occurred(int DX, int DY, int DZ, int FRQ)
+{
+	int count;
+	struct list_head *p = NULL;
+	struct event_elt *m = NULL;
+
+	/*printk("check_events_occurred: checking stuff\n");*/
+	if (head_ptr == NULL) {
+		pr_err("check_event_occurred: event_q ead_ptr is NULL\n");
+		return -1;
+	}
+
+	if (head_ptr->next == NULL) {
+		pr_err("check_event_occurred: event_q head_ptr->next is NULL\n");
+		return -1;
+	}
+
+	if (event_q_len == 0) {
+		pr_err("check_event_occurred: No events in event_q\n");
+		return -1;
+	}
+
+	/*printk("check_events_occurred: going to start loop\n");*/
+	count = 0;
+	write_lock(&lock_event);
+	list_for_each(p, head_ptr->next) {
+		/*printk("check_events_occurred: in loop\n");*/
+		m = list_entry(p, struct event_elt, list);
+		if (m == NULL) {
+			pr_err("check_event_occurred: retrieved NULL from event q\n");
+			return -1;
+		}
+		/*printk("check_events_occurred: checking condition\n");*/
+		if (DX >= m->dx && DY >= m->dy
+				&& DZ >= m->dz && FRQ >= m->frq) {
+			pr_err("check_event_occurred: found event with id");
+			pr_err(" %d: %d %d %d\n", m->id, m->dx, m->dy, m->dz);
+			atomic_set(&(m->condition), 1);
+			atomic_set(&(m->normal_wakeup), 1);
+			count++;
+		}
+	}
+	write_unlock(&lock_event);
+
+	pr_err("%d events have been set\n", count);
+	return 0;
+}
+
 /*
 * In the caller, if status is:
 * 0	: event occurred, and event_elt is returned : this is good
