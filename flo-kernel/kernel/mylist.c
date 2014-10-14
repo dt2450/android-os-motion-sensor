@@ -164,9 +164,8 @@ struct event_elt *get_event_using_id(int event_id)
 			pr_err("get_event_using_id: retrieved NULL from event q\n");
 			return NULL;
 		}
-		if (m->id == event_id) {
+		if (m->id == event_id)
 			return m;
-		}
 	}
 
 	pr_err("get_event_using_id: No event found with id: %d\n", event_id);
@@ -339,8 +338,8 @@ int set_events_which_occurred(int DX, int DY, int DZ, int FRQ)
 		}
 		if (DX >= m->dx && DY >= m->dy
 				&& DZ >= m->dz && FRQ >= m->frq) {
-			pr_err("check_event_occurred: found event with id");
-			pr_err(" %d: %d %d %d\n", m->id, m->dx, m->dy, m->dz);
+			pr_info("check_event_occurred: found event with id");
+			pr_info(" %d: %d %d %d\n", m->id, m->dx, m->dy, m->dz);
 			atomic_set(&(m->condition), 1);
 			atomic_set(&(m->normal_wakeup), 1);
 			count++;

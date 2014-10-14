@@ -130,7 +130,6 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		pr_err("accevt_wait: event Id not found");
 		return -EFAULT;
 	}
-	printk("before wait value of ref_count :%d\n", atomic_read(&(currentEvent->ref_count)));
 	atomic_inc(&(currentEvent->ref_count));
 	while (!atomic_read(&(currentEvent->condition))) {
 		DEFINE_WAIT(__wait);
@@ -141,8 +140,7 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		finish_wait(&__queue, &__wait);
 	}
 	atomic_dec(&(currentEvent->ref_count));
-	printk("after wait value of ref_count :%d\n", atomic_read(&(currentEvent->ref_count)));
-	if (atomic_read(&(currentEvent->ref_count)) == 0){
+	if (atomic_read(&(currentEvent->ref_count)) == 0) {
 		write_lock(&lock_event);
 		atomic_set(&(currentEvent->condition), 0);
 		write_unlock(&lock_event);
@@ -259,8 +257,8 @@ SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 		atomic_set(&(event_to_destroy->condition), 1);
 		write_unlock(&lock_event);
 		wake_up_all(&__queue);
-		while(atomic_read(&(event_to_destroy->ref_count))>0)
-			printk("waiting for refcount to become zero, currentVal is: %d\n", atomic_read(&(event_to_destroy->ref_count)));
+		while (atomic_read(&(event_to_destroy->ref_count)) > 0)
+			;
 		returnVal = remove_event_using_id(event_id);
 		if (returnVal == -1) {
 			pr_err("accevt_destroy: Could not destroy event: %d\n",
