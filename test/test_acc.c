@@ -31,9 +31,7 @@ struct acc_motion {
 	unsigned int dlt_x; /* +/- around X-axis */
 	unsigned int dlt_y; /* +/- around Y-axis */
 	unsigned int dlt_z; /* +/- around Z-axis */
-	unsigned int frq;   /* Number of samples that satisfies:
-			     * sum_each_sample(dlt_x + dlt_y + dlt_z) > NOISE
-			     */
+	unsigned int frq;   /* Number of samples */
 };
 
 int validate_input(int argc, char **argv)
@@ -47,20 +45,22 @@ int validate_input(int argc, char **argv)
 	} else if (argc != 3) {
 		printf("Incorrect no. of args\n");
 		printf("usage: cmd <num_processes> <timeout_in_secs>\n");
-		return -1;
+		goto exit;
+	} else {
+		num_processes = atoi(argv[1]);
+		timeout_secs = atoi(argv[2]);
 	}
-	num_processes = atoi(argv[1]);
-	timeout_secs = atoi(argv[2]);
 	if (num_processes < 0 || timeout_secs < 0) {
 		printf("Incorrect args. Please verify again\n");
-		printf(
-				"usage: cmd <num_processes> <timeout_in_secs>\n");
+		printf("usage: cmd <num_processes> <timeout_in_secs>\n");
 		return -1;
 	}
 	if (num_processes > MAX_N)
 		num_processes = MAX_N;
 	printf("Creating %d number of processes\n", num_processes);
 	return 0;
+exit:
+	return -1;
 }
 
 int main(int argc, char **argv)
