@@ -32,7 +32,9 @@ int init_delta_q(void)
 {
 	write_lock(&lock_delta);
 	if (delta_q_len == 0) {
-		//pr_info("initializing delta_q_head for the 1st time\n");
+		/*
+		pr_info("initializing delta_q_head\n");
+		*/
 		INIT_LIST_HEAD(&delta_q_head);
 		delta_q_head_ptr = &delta_q_head;
 		prev.x = 0;
@@ -50,7 +52,6 @@ int init_event_q(int take_lock)
 	if (take_lock == 1)
 		write_lock(&lock_event);
 	if (head_ptr == NULL || head_ptr->next == NULL || event_q_len <= 0) {
-		//pr_info("init_event_q: initializing event_q_head for the 1st time.\n");
 		if (head_ptr == NULL)
 			pr_err("init_event_q: head_ptr is NULL\n");
 		else if (head_ptr->next == NULL)
@@ -126,8 +127,6 @@ int remove_event_from_list(struct event_elt *event)
 		return -1;
 	}
 
-	pr_debug(" %d %d %d %d\n", event->dx, event->dy, event->dz, event->frq);
-
 	if (event_q_len == 0) {
 		pr_err("remove_event_from_list: event queue underflow\n");
 		return -1;
@@ -178,7 +177,6 @@ struct event_elt *get_event_using_id(int event_id)
 
 int remove_event_using_id(int event_id)
 {
-	/* lock is taken by the calling function */
 	struct list_head *p = NULL;
 	struct event_elt *m = NULL;
 	int ret, found = 0;
@@ -244,9 +242,6 @@ int add_deltas(int *DX, int *DY, int *DZ)
 			read_unlock(&lock_delta);
 			return -1;
 		}
-		/*pr_err("Elt %d: %d %d %d %d", i, d->dx,
-		d->dy, d->dz, d->frq);*/
-
 		if (d->frq == 1) {
 			*DX += d->dx;
 			*DY += d->dy;
