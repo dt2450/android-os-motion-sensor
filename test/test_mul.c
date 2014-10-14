@@ -173,7 +173,7 @@ int main(int argc, char **argv)
 				printf(" but no shake detected.\n");
 				exit(0);
 			} else if (ret_val == 0) {
-				printf("3. Process %d detected a"
+				printf("3. Process %d detected a",
 						getpid());
 				printf(" x:%d y:%d z:%d shake\n",
 						motion->dlt_x,
