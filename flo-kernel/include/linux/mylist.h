@@ -25,7 +25,7 @@ struct event_elt {
 	int id;
 	atomic_t condition;
 	atomic_t normal_wakeup;
-
+	atomic_t ref_count;
 	struct list_head list;
 };
 

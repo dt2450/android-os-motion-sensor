@@ -130,7 +130,7 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		pr_err("accevt_wait: event Id not found");
 		return -EFAULT;
 	}
-	//atomic_inc(&(currentEvent->ref_count);
+	atomic_inc(&(currentEvent->ref_count));
 	while (!atomic_read(&(currentEvent->condition))) {
 		DEFINE_WAIT(__wait);
 
@@ -139,7 +139,13 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 			schedule();
 		finish_wait(&__queue, &__wait);
 	}
-	//atomic_dec(&(currentEvent->ref_count));
+	atomic_dec(&(currentEvent->ref_count));
+	if (atomic_read(&(currentEvent->ref_count)) == 0){
+		write_lock(&lock_event);
+		atomic_set(&(currentEvent->condition), 0);
+		write_unlock(&lock_event);
+	}
+
 	if (atomic_read(&(currentEvent->normal_wakeup)) == 0) {
 		pr_err("accevt_wait: No shake was detected\n");
 		return -EINVAL;
