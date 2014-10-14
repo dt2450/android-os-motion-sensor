@@ -31,7 +31,7 @@ struct event_elt
 	struct list_head list;
 };
 
-int init_event_q(void);
+int init_event_q(int take_lock);
 int add_event_to_list(struct acc_motion *motion, int event_id);
 int remove_event_from_list(struct event_elt *event);
 int remove_event_using_id(int event_id);

@@ -6,9 +6,10 @@
 #include <sys/syscall.h>
 #include <errno.h>
 
+//sjbvbvsb
 #define DEFAULT_N			10
 #define MAX_N				1024
-#define DEFAULT_TIMEOUT_IN_SECS		60
+#define DEFAULT_TIMEOUT_IN_SECS		20
 #define __NR_set_acceleration		378
 #define __NR_accevt_create		379
 #define __NR_accevt_wait		380
@@ -227,7 +228,6 @@ int main(int argc, char **argv)
 	for (i = 0; i < num_processes; i++) {
 		printf("Saved pid = %d, i = %d, event_id = %d\n",
 				child_pid_array[i], i, event_id_array[i]);
-
 		if (syscall(__NR_accevt_destroy, event_id_array[i])
 				!= 0) {
 			printf("During destroy error: %s\n",

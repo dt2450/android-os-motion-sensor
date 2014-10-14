@@ -45,10 +45,11 @@ int init_delta_q(void)
 }
 
 /*Initializes the event queue*/
-int init_event_q(void)
+int init_event_q(int take_lock)
 {
 	pr_info("init_event_q: Came here 1\n");
-	write_lock(&lock_event);
+	if (take_lock == 1)
+		write_lock(&lock_event);
 	pr_info("init_event_q: Came here 2\n");
 	if (head_ptr == NULL || head_ptr->next == NULL || event_q_len <= 0) {
 		pr_info("init_event_q: initializing event_q_head for the 1st time.\n");
@@ -62,7 +63,8 @@ int init_event_q(void)
 	}
 
 	pr_info("init_event_q: Came here 3\n");
-	write_unlock(&lock_event);
+	if (take_lock == 1)
+		write_unlock(&lock_event);
 	pr_info("init_event_q: Came here 4\n");
 	return 0;
 }
@@ -160,7 +162,7 @@ int remove_event_from_list(struct event_elt *event)
 				" head_ptr_next = %x\n", event_q_len,
 				(unsigned int)head_ptr,
 				(unsigned int)head_ptr->next);
-		init_event_q();
+		init_event_q(0);
 	}
 
 	return 0;
@@ -209,8 +211,8 @@ struct event_elt *get_event_using_id(int event_id)
 int remove_event_using_id(int event_id)
 {
 	/* lock is taken by the calling function */
-	struct list_head *p;
-	struct event_elt *m;
+	struct list_head *p = NULL;
+	struct event_elt *m = NULL;
 	int ret, found = 0;
 
 	pr_info("remove_event_using_id: Came here 1\n");
@@ -226,6 +228,7 @@ int remove_event_using_id(int event_id)
 	}
 
 	pr_info("remove_event_using_id: Came here 3\n");
+	write_lock(&lock_event);
 	list_for_each(p, head_ptr->next) {
 		pr_info("remove_event_using_id: Came here 4\n");
 		m = list_entry(p, struct event_elt, list);
@@ -244,20 +247,18 @@ int remove_event_using_id(int event_id)
 			pr_info("remove_event_using_id: Came here 7\n");
 			if (ret == -1)
 				return -1;
-			/*pr_err("remove_event_using_id:);
-			pr_err("successfully removed event\n");*/
 			pr_info("remove_event_using_id: Came here 8\n");
 			break;
 		}
 	}
-
+	write_unlock(&lock_event);
+	kfree(m);
 	pr_info("remove_event_using_id: Came here 9\n");
 	if (found == 0) {
 		pr_err("remove_event_using_id: No event found");
 		pr_err(" with id: %d\n", event_id);
 		return -1;
 	}
-
 	return 0;
 }
 

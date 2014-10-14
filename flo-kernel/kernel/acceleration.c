@@ -88,7 +88,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	int returnVal;
 
 	pr_info("accevt_create: Came here 1\n");
-	returnVal = init_event_q();
+	returnVal = init_event_q(1);
 
 	pr_info("accevt_create: Came here 2\n");
 	if (returnVal != 0) {
@@ -305,12 +305,15 @@ SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 			return -EINVAL;
 		}
 		atomic_set(&(event_to_destroy->condition), 1);
+		write_unlock(&lock_event);
 		pr_info("accevt_destroy: Came here 5\n");
 		wake_up_all(&__queue);
 		pr_info("accevt_destroy: Came here 6\n");
+		//skvbsvbsbns
+		//write_lock(&lock_event);
 		returnVal = remove_event_using_id(event_id);
+		//write_unlock(&lock_event);
 		pr_info("accevt_destroy: Came here 7\n");
-		write_unlock(&lock_event);
 		if (returnVal == -1) {
 			pr_err("accevt_destroy: Could not destroy event: %d\n",
 					event_id);
