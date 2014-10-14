@@ -36,10 +36,7 @@ Sending acceleration values to the kernel and checking if they satisfy events:
 For this we use 'daemon_part3'. it keeps calling signal syscall after every 200ms, and sends the x,y,z values and puts the computed delta values in a queue. It also computes the list of deltas for x,y & z. It then iterates the list of events to check if any of them have occurred, upon which it sets their 'condition' as 1.
 
 
-
-
-
   REFERENCES
 ==============
 1. http://tuxthink.blogspot.com/2014/07/creating-queue-in-linux-kernel-using.html
-
+2. http://lwn.net/Articles/22913/
