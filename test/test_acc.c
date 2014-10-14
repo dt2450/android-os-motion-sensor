@@ -155,6 +155,7 @@ int main(int argc, char **argv)
 			/* frequency is taken randomly between 1 to 20 */
 			srand(time(NULL));
 			motion->frq = (rand()%20)+1;
+			printf("frq selected: %d\n", motion->frq);
 			/* create the event with the motion*/
 			printf("Creating event syscall\n", motion->dlt_x);
 			event_id = syscall(__NR_accevt_create, motion);

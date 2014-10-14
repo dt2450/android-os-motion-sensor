@@ -165,7 +165,6 @@ struct event_elt *get_event_using_id(int event_id)
 			return NULL;
 		}
 		if (m->id == event_id) {
-			pr_info("get_event_using_id: Came here 6\n");
 			return m;
 		}
 	}

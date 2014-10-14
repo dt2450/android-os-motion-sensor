@@ -17,7 +17,7 @@ struct dev_acceleration {
 };
 
 /*Define the noise*/
-#define NOISE 10
+#define NOISE 40
 
 /*Define the window*/
 #define WINDOW 20
