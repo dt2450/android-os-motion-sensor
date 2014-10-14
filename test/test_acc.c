@@ -61,6 +61,7 @@ int main(int argc, char **argv)
 	int event_id_array[num_processes];
 	int child_pid_array[num_processes];
 	int i = 0;
+	int frequency = 0;
 
 	if (returnValue == -1)
 		return returnValue;
@@ -77,6 +78,10 @@ int main(int argc, char **argv)
 			children are waiting in the queue forever?*/
 			exit(-1);
 		}
+		/* frequency is taken randomly between 1 to 20 */
+		srand(time(NULL));
+		frequency = (rand()%20)+1;
+
 		int pid = fork();
 
 		if (pid < 0) {
@@ -143,9 +148,7 @@ int main(int argc, char **argv)
 				printf(" came here\n");
 				exit(-1);
 			}
-			/* frequency is taken randomly between 1 to 20 */
-			srand(time(NULL));
-			motion->frq = (rand()%20)+1;
+			motion->frq = frequency;
 			printf("frq selected: %d\n", motion->frq);
 			/* create the event with the motion*/
 			printf("Creating event syscall\n", motion->dlt_x);
