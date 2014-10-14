@@ -6,10 +6,9 @@
 #include <sys/syscall.h>
 #include <errno.h>
 
-//sjbvbvsb
-#define DEFAULT_N			10
+#define DEFAULT_N			30
 #define MAX_N				1024
-#define DEFAULT_TIMEOUT_IN_SECS		20
+#define DEFAULT_TIMEOUT_IN_SECS		30
 #define __NR_set_acceleration		378
 #define __NR_accevt_create		379
 #define __NR_accevt_wait		380
@@ -18,14 +17,6 @@
 
 static int num_processes = DEFAULT_N;
 static int timeout_secs = DEFAULT_TIMEOUT_IN_SECS;
-
-#if 0
-struct dev_acceleration {
-	int x; /* acceleration along X-axis */
-	int y; /* acceleration along Y-axis */
-	int z; /* acceleration along Z-axis */
-};
-#endif
 
 struct acc_motion {
 
