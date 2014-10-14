@@ -18,22 +18,12 @@
 static int num_processes = DEFAULT_N;
 static int timeout_secs = DEFAULT_TIMEOUT_IN_SECS;
 
-#if 0
-struct dev_acceleration {
-	int x; /* acceleration along X-axis */
-	int y; /* acceleration along Y-axis */
-	int z; /* acceleration along Z-axis */
-};
-#endif
-
 struct acc_motion {
 
 	unsigned int dlt_x; /* +/- around X-axis */
 	unsigned int dlt_y; /* +/- around Y-axis */
 	unsigned int dlt_z; /* +/- around Z-axis */
-	unsigned int frq;   /* Number of samples that satisfies:
-			* sum_each_sample(dlt_x + dlt_y + dlt_z) > NOISE
-			*/
+	unsigned int frq;   /* Number of samples */
 };
 
 int validate_input(int argc, char **argv)
@@ -47,7 +37,7 @@ int validate_input(int argc, char **argv)
 	} else if (argc != 3) {
 		printf("Incorrect no. of args\n");
 		printf("usage: cmd <num_processes> <timeout_in_secs>\n");
-		return -1;
+		goto exit;
 	} else {
 		num_processes = atoi(argv[1]);
 		timeout_secs = atoi(argv[2]);
@@ -62,6 +52,8 @@ int validate_input(int argc, char **argv)
 		printf("Creating %d number of processes\n", num_processes);
 	}
 	return 0;
+exit:
+	return -1;
 }
 
 int main(int argc, char **argv)
@@ -82,8 +74,6 @@ int main(int argc, char **argv)
 
 		if (pipe(pipe_fd) == -1) {
 			printf("Parent process error: %s\n", strerror(errno));
-			//for debugging what if the parent exits and some
-			//children are waiting in the queue forever?
 			exit(-1);
 		}
 		int pid = fork();
@@ -107,7 +97,6 @@ int main(int argc, char **argv)
 			int ret_val;
 			struct acc_motion *motion = (struct acc_motion *) malloc
 				(sizeof(struct acc_motion));
-			//for debugging
 			printf("I am child number: %d pid = %d\n", i+1,
 					getpid());
 			switch (motion_type) {
@@ -154,11 +143,8 @@ int main(int argc, char **argv)
 			/* frequency is taken randomly between 1 to 20 */
 			srand(time(NULL));
 			motion->frq = (rand()%20)+1;
-			/* create the event with the motion*/
-			printf("Creating event syscall\n", motion->dlt_x);
+			/* create the event with the motion */
 			event_id = syscall(__NR_accevt_create, motion);
-			printf("after creating event syscall\n");
-			//for debugging
 			printf("event id is %d\n", event_id);
 			if (event_id == -1) {
 				printf("1. Process %d encountered error: %s\n",
@@ -176,23 +162,20 @@ int main(int argc, char **argv)
 
 			pid = fork();
 			if (pid < 0) {
-                        	printf("Sorry encountered an error while forking.");
-                        	printf(" Aborting from here\n");
-                        	exit(-1);
-                	}
-			//for debugging
-			printf("before wait syscall\n");
+				printf("Error while forking.");
+				printf(" Aborting from here\n");
+				exit(-1);
+			}
 			ret_val = syscall(__NR_accevt_wait, event_id);
-			printf("retval is: %d && errnois %d\n", ret_val, errno); 
 			/* check if its -EINVAL */
 			if (ret_val == -1 && errno == EINVAL) {
-				printf("3. Process %d woke up, but no shake detected.\n",
-						getpid());
+				printf("3. Process %d woke up", getpid());
+				printf(" but no shake detected.\n");
 				exit(0);
-			} else if (ret_val == 0){
-				//for debugging
-				printf("3. Process %d detected a x:%d y:%d z:%d shake\n",
-						getpid(),
+			} else if (ret_val == 0) {
+				printf("3. Process %d detected a"
+						getpid());
+				printf(" x:%d y:%d z:%d shake\n",
 						motion->dlt_x,
 						motion->dlt_y,
 						motion->dlt_z);
@@ -200,7 +183,7 @@ int main(int argc, char **argv)
 			} else {
 				printf("3. Process %d encountered error: %s\n",
 						getpid(),
-                                                strerror(errno));
+						strerror(errno));
 				exit(-1);
 			}
 		} else {
@@ -231,18 +214,11 @@ int main(int argc, char **argv)
 	for (i = 0; i < num_processes; i++) {
 		printf("Saved pid = %d, i = %d, event_id = %d\n",
 				child_pid_array[i], i, event_id_array[i]);
-		//handle this in system call?
-		int status;
-		pid_t result = waitpid(child_pid_array[i], &status, WNOHANG);
-
-		if (result == 0) {
-			if (syscall(__NR_accevt_destroy, event_id_array[i])
-					!= 0) {
-				printf("During destroy error: %s\n",
-						strerror(errno));
-			}
+		if (syscall(__NR_accevt_destroy, event_id_array[i])
+				!= 0) {
+			printf("During destroy error: %s\n",
+					strerror(errno));
 		}
 	}
-
 	return 0;
 }
