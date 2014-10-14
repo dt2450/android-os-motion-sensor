@@ -61,7 +61,6 @@ int main(int argc, char **argv)
 	int event_id_array[num_processes];
 	int child_pid_array[num_processes];
 	int i = 0;
-	int frequency = 0;
 
 	if (returnValue == -1)
 		return returnValue;
@@ -78,9 +77,6 @@ int main(int argc, char **argv)
 			children are waiting in the queue forever?*/
 			exit(-1);
 		}
-		/* frequency is taken randomly between 1 to 20 */
-		srand(time(NULL));
-		frequency = (rand()%20)+1;
 
 		int pid = fork();
 
@@ -103,9 +99,6 @@ int main(int argc, char **argv)
 			int ret_val;
 			struct acc_motion *motion = (struct acc_motion *) malloc
 				(sizeof(struct acc_motion));
-			/*for debugging*/
-			printf("I am child number: %d pid = %d\n", i+1,
-					getpid());
 			switch (motion_type) {
 			case 0:
 				motion->dlt_x = (i+1)*100;
@@ -128,8 +121,9 @@ int main(int argc, char **argv)
 				printf(" came here\n");
 				exit(-1);
 			}
-			motion->frq = frequency;
-			printf("frq selected: %d\n", motion->frq);
+			motion->frq = i%20;
+			printf("frequency is: %d\n", motion->frq);
+
 			/* create the event with the motion*/
 			event_id = syscall(__NR_accevt_create, motion);
 			if (event_id == -1) {
@@ -160,7 +154,7 @@ int main(int argc, char **argv)
 					printf("horizontal shake\n");
 					break;
 				case 1:
-					printf("vorizontal shake\n");
+					printf("vertical shake\n");
 					break;
 				case 2:
 					printf("shake\n");
@@ -202,8 +196,6 @@ int main(int argc, char **argv)
 	sleep(timeout_secs);
 
 	for (i = 0; i < num_processes; i++) {
-		printf("Saved pid = %d, i = %d, event_id = %d\n",
-				child_pid_array[i], i, event_id_array[i]);
 		if (syscall(__NR_accevt_destroy, event_id_array[i])
 				!= 0) {
 			printf("During destroy error: %s\n",
