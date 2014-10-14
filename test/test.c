@@ -122,7 +122,6 @@ int main(int argc, char **argv)
 				exit(-1);
 			}
 			motion->frq = i%20;
-			printf("frequency is: %d\n", motion->frq);
 
 			/* create the event with the motion*/
 			event_id = syscall(__NR_accevt_create, motion);
