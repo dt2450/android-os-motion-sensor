@@ -21,26 +21,26 @@ static DECLARE_WAIT_QUEUE_HEAD(__queue);
  */
 
 SYSCALL_DEFINE1(set_acceleration,
-			struct dev_acceleration __user *, acceleration)
+		struct dev_acceleration __user *, acceleration)
 {
 	struct dev_acceleration *k_acc = NULL;
 	struct delta_elt *temp = NULL;
 	int returnVal, pid;
 
 	read_lock(&tasklist_lock);
-        if (current == NULL || current->real_cred ==NULL) {
-                pr_err("set_acceleration: current task is invalid\n");
-                read_unlock(&tasklist_lock);
-                return -EFAULT;
-        }
+	if (current == NULL || current->real_cred == NULL) {
+		pr_err("set_acceleration: current task is invalid\n");
+		read_unlock(&tasklist_lock);
+		return -EFAULT;
+	}
 
-        pid = current->real_cred->uid;
-        read_unlock(&tasklist_lock);
+	pid = current->real_cred->uid;
+	read_unlock(&tasklist_lock);
 
-        if (pid != 0) {
-                pr_err("set_acceleration: called by non-root user !!\n");
-                return -EACCES;
-        }
+	if (pid != 0) {
+		pr_err("set_acceleration: called by non-root user !!\n");
+		return -EACCES;
+	}
 
 	returnVal = init_delta_q();
 	if (returnVal == -1) {
@@ -55,7 +55,7 @@ SYSCALL_DEFINE1(set_acceleration,
 
 	k_acc = kmalloc(sizeof(struct dev_acceleration), GFP_KERNEL);
 	if (copy_from_user(k_acc, acceleration,
-			sizeof(struct dev_acceleration))) {
+				sizeof(struct dev_acceleration))) {
 		pr_err("set_acceleration: copy_from_user failed.\n");
 		kfree(k_acc);
 		return -EFAULT;
@@ -106,7 +106,7 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	}
 	pr_info("accevt_create: Came here 6\n");
 	if (copy_from_user(currentEvent, acceleration,
-			sizeof(struct acc_motion))) {
+				sizeof(struct acc_motion))) {
 		pr_err("set_acceleration: copy_from_user failed.\n");
 		kfree(currentEvent);
 		return -EFAULT;
@@ -194,19 +194,19 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	int returnVal = -1;
 
 	read_lock(&tasklist_lock);
-        if (current == NULL || current->real_cred ==NULL) {
-                pr_err("set_acceleration: current task is invalid\n");
-                read_unlock(&tasklist_lock);
-                return -EFAULT;
-        }
+	if (current == NULL || current->real_cred == NULL) {
+		pr_err("set_acceleration: current task is invalid\n");
+		read_unlock(&tasklist_lock);
+		return -EFAULT;
+	}
 
-        pid = current->real_cred->uid;
-        read_unlock(&tasklist_lock);
+	pid = current->real_cred->uid;
+	read_unlock(&tasklist_lock);
 
-        if (pid != 0) {
-                pr_err("set_acceleration: called by non-root user !!\n");
-                return -EACCES;
-        }
+	if (pid != 0) {
+		pr_err("set_acceleration: called by non-root user !!\n");
+		return -EACCES;
+	}
 
 	returnVal = init_delta_q();
 
@@ -222,7 +222,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 
 	k_acc = kmalloc(sizeof(struct dev_acceleration), GFP_KERNEL);
 	if (copy_from_user(k_acc,
-		acceleration, sizeof(struct dev_acceleration))) {
+			acceleration, sizeof(struct dev_acceleration))) {
 		pr_err("accevt_signal: copy_from_user failed.\n");
 		kfree(k_acc);
 		return -EFAULT;
@@ -247,7 +247,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 	}
 
 	/* Get a list of all events that satisfy delta/frq values */
-	//TODO: Take locks either here or inside the function: malloc inside
+	/*TODO: Take locks either here or inside the function: malloc inside*/
 	events = check_events_occurred(dx, dy, dz, freq, &status, &len);
 	pr_debug("status of returned events is:: %d", status);
 	if (status == -1) {
@@ -262,10 +262,10 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 			/* Remove the event from the event queue */
 			atomic_set(&(events[i]->condition), 1);
 			/*setting flag for normal wake up - process
-			will print shake detected*/
+			  will print shake detected*/
 			atomic_set(&(events[i]->normal_wakeup), 1);
 			pr_debug("setting the condition to : %d",
-				atomic_read(&(events[i]->condition)));
+					atomic_read(&(events[i]->condition)));
 			pr_debug("for event id: %d\n", events[i]->id);
 		}
 	}
