@@ -1,9 +1,9 @@
 /*
- * Columbia University
- * COMS W4118 Fall 2014
- * Homework 3
- *
- */
+* Columbia University
+* COMS W4118 Fall 2014
+* Homework 3
+*
+*/
 #include <bionic/errno.h> /* Google does things a little different...*/
 #include <fcntl.h>
 #include <math.h>
@@ -75,8 +75,7 @@ static int poll_sensor_data(struct sensors_poll_device_t *sensors_device)
 	return 0;
 }
 
-/* entry point: fill in daemon implementation
-   where indicated */
+/* entry point: fill in daemon implementation where indicated */
 int main(int argc, char **argv)
 {
 	effective_sensor = -1;
