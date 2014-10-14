@@ -61,8 +61,6 @@ SYSCALL_DEFINE1(set_acceleration,
 		return -EFAULT;
 	}
 
-	pr_debug("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
-
 	if (delta_q_len <= WINDOW) {
 		temp = kmalloc(sizeof(struct delta_elt), GFP_KERNEL);
 		if (temp == NULL)
@@ -87,24 +85,17 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	struct acc_motion *currentEvent = NULL;
 	int returnVal;
 
-	pr_info("accevt_create: Came here 1\n");
 	returnVal = init_event_q(1);
-
-	pr_info("accevt_create: Came here 2\n");
 	if (returnVal != 0) {
 		pr_err("could not initialize queue");
 		return -EFAULT;
 	}
-	pr_info("accevt_create: Came here 3\n");
 	atomic_inc(&counter);
-	pr_info("accevt_create: Came here 4\n");
 	currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
-	pr_info("accevt_create: Came here 5\n");
 	if (currentEvent == NULL) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
 	}
-	pr_info("accevt_create: Came here 6\n");
 	if (copy_from_user(currentEvent, acceleration,
 				sizeof(struct acc_motion))) {
 		pr_err("set_acceleration: copy_from_user failed.\n");
@@ -112,16 +103,11 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 		return -EFAULT;
 	}
 
-	pr_info("accevt_create: Came here 7\n");
 	returnVal = add_event_to_list(currentEvent, atomic_read(&counter));
-
-	pr_info("accevt_create: Came here 8\n");
 	if (returnVal == -1) {
 		pr_err("could not add event to the event list");
 		return -EFAULT;
 	}
-	/*TODO: release write lock on event_q*/
-	pr_info("accevt_create: Came here 9\n");
 	return atomic_read(&counter);
 }
 
@@ -136,7 +122,6 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 	struct event_elt *currentEvent = NULL;
 
 	if (event_id <= atomic_read(&counter)) {
-		/*get event type from the list api*/
 		read_lock(&lock_event);
 		currentEvent = get_event_using_id(event_id);
 		read_unlock(&lock_event);
@@ -145,32 +130,18 @@ SYSCALL_DEFINE1(accevt_wait, int, event_id)
 		pr_err("accevt_wait: event Id not found");
 		return -EFAULT;
 	}
-	/*TODO: block processes on this event id*/
-	pr_debug("goint into while loop for wait, event id is:%d\n",
-			currentEvent->id);
 	while (!atomic_read(&(currentEvent->condition))) {
 		DEFINE_WAIT(__wait);
 
-		pr_debug("accevt_wait: calling prepare to wait---: %d\n",
-				atomic_read(&(currentEvent->condition)));
 		prepare_to_wait(&__queue, &__wait, TASK_INTERRUPTIBLE);
 		if (!atomic_read(&(currentEvent->condition)))
 			schedule();
 		finish_wait(&__queue, &__wait);
 	}
-	pr_debug("accevt_wait: Came out of while loop\n");
 	if (atomic_read(&(currentEvent->normal_wakeup)) == 0) {
 		pr_err("accevt_wait: No shake was detected\n");
 		return -EINVAL;
 	}
-	/*
-	   printk("wait done removing event from the list");
-	   printk(", Event_id is: %d\n",event_id);
-	   remove_event_from_list(currentEvent);
-	   printk("x=%d, y=%d, z=%d\n", currentEvent->dx, currentEvent->dy,
-	   currentEvent->dz);
-	 */
-	pr_debug("accevt_wait: Shake was detected\n");
 	return 0;
 }
 
@@ -227,8 +198,6 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 		return -EFAULT;
 	}
 
-	pr_debug("x=%d, y=%d, z=%d\n", k_acc->x, k_acc->y, k_acc->z);
-
 	if (delta_q_len <= WINDOW) {
 		temp = kmalloc(sizeof(struct delta_elt), GFP_KERNEL);
 		if (temp == NULL)
@@ -249,30 +218,7 @@ SYSCALL_DEFINE1(accevt_signal, struct dev_acceleration __user *, acceleration)
 		pr_err("accevt_signal: could not set event conditions\n");
 		return -EFAULT;
 	}
-	/* Get a list of all events that satisfy delta/frq values */
-	/*TODO: Take locks either here or inside the function: malloc inside*/
-
-	/*
-	events = check_events_occurred(dx, dy, dz, freq, &status, &len);
-	pr_debug("status of returned events is:: %d", status);
-	if (status == -1) {
-		pr_err("accevt_signal: error while checking events\n");
-		kfree(k_acc);
-		return -EFAULT;
-	}
-
-	if (status == 0) {
-		for (i = 0; i < len; i++) {
-			atomic_set(&(events[i]->condition), 1);
-			atomic_set(&(events[i]->normal_wakeup), 1);
-			pr_debug("setting the condition to : %d",
-					atomic_read(&(events[i]->condition)));
-			pr_debug("for event id: %d\n", events[i]->id);
-		}
-	}
-	*/
 	wake_up_all(&__queue);
-	/*TODO: release read lock on delta_q*/
 	kfree(k_acc);
 	return 0;
 }
@@ -287,13 +233,9 @@ SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 	int returnVal;
 	struct event_elt *event_to_destroy;
 
-	pr_info("accevt_destroy: Came here 1\n");
 	if (event_id <= atomic_read(&counter)) {
-		pr_info("accevt_destroy: Came here 2\n");
 		write_lock(&lock_event);
-		pr_info("accevt_destroy: Came here 3\n");
 		event_to_destroy = get_event_using_id(event_id);
-		pr_info("accevt_destroy: Came here 4\n");
 		/*waking up processes waiting on this event
 		but normal_wakeup not set hence processes will
 		not print shake detected*/
@@ -306,14 +248,8 @@ SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 		}
 		atomic_set(&(event_to_destroy->condition), 1);
 		write_unlock(&lock_event);
-		pr_info("accevt_destroy: Came here 5\n");
 		wake_up_all(&__queue);
-		pr_info("accevt_destroy: Came here 6\n");
-		//skvbsvbsbns
-		//write_lock(&lock_event);
 		returnVal = remove_event_using_id(event_id);
-		//write_unlock(&lock_event);
-		pr_info("accevt_destroy: Came here 7\n");
 		if (returnVal == -1) {
 			pr_err("accevt_destroy: Could not destroy event: %d\n",
 					event_id);
