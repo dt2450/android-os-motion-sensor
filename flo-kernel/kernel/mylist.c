@@ -47,14 +47,23 @@ int init_delta_q(void)
 /*Initializes the event queue*/
 int init_event_q(void)
 {
+	pr_info("init_event_q: Came here 1\n");
 	write_lock(&lock_event);
-	if (head_ptr == NULL || head_ptr->next == NULL) {
-		pr_info("initializing event_q_head for the 1st time.\n");
+	pr_info("init_event_q: Came here 2\n");
+	if (head_ptr == NULL || head_ptr->next == NULL || event_q_len <= 0) {
+		pr_info("init_event_q: initializing event_q_head for the 1st time.\n");
+		if (head_ptr == NULL)
+			pr_err("init_event_q: head_ptr is NULL\n");
+		else if (head_ptr->next == NULL)
+			pr_err("init_event_q: head_ptr->next is NULL\n");
+		pr_err("init_event_q: event_q_len: %d\n", event_q_len);
 		INIT_LIST_HEAD(&head);
 		head_ptr = &head;
 	}
 
+	pr_info("init_event_q: Came here 3\n");
 	write_unlock(&lock_event);
+	pr_info("init_event_q: Came here 4\n");
 	return 0;
 }
 
@@ -62,39 +71,52 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 {
 	struct event_elt *event;
 
+	pr_info("add_event_to_list: Came here 1");
 	if (motion == NULL) {
 		pr_err("add_event_to_list: motion is NULL\n");
 		return -1;
 	}
 
+	pr_info("add_event_to_list: Came here 2");
 	event = kmalloc(sizeof(struct event_elt), GFP_KERNEL);
 	if (event == NULL)
 		return -1;
 
+	pr_info("add_event_to_list: Came here 3");
 	if (head_ptr == NULL) {
 		pr_err("add_event_to_list: head_ptr is NULL\n");
 		return -1;
 	}
 
+	pr_info("add_event_to_list: Came here 4");
 	event->dx = motion->dlt_x;
 	event->dy = motion->dlt_y;
 	event->dz = motion->dlt_z;
 	event->frq = motion->frq;
 	event->id = event_id;
 
+	pr_info("add_event_to_list: Came here 5");
 	atomic_set(&(event->condition), 0);
 	atomic_set(&(event->normal_wakeup), 0);
 
 
 	write_lock(&lock_event);
+	pr_info("add_event_to_list: Came here 6");
+	pr_info("event = %x list = %x head_ptr = %x head_ptr->next= %x\n",
+			(unsigned int)event, (unsigned int)&event->list,
+			(unsigned int)head_ptr, (unsigned int)head_ptr->next);
 	list_add(&event->list, head_ptr);
+	pr_info("add_event_to_list: Came here 7");
 	head_ptr = &(event->list);
+	pr_info("add_event_to_list: Came here 8");
 	event_q_len++;
 	write_unlock(&lock_event);
 
-	pr_debug("Enqueued event %d: dx:%d", event_q_len, event->dx);
-	pr_debug(" dy:%d dz:%d frq:%d, ", event->dy, event->dz, event->frq);
-	pr_debug(" with id=%d\n", event->id);
+	//pr_debug("Enqueued event %d: dx:%d", event_q_len, event->dx);
+	//pr_debug(" dy:%d dz:%d frq:%d, ", event->dy, event->dz, event->frq);
+	//pr_debug(" with id=%d\n", event->id);
+	pr_info("add_event_to_list: after adding, event_q_len: %d",
+			event_q_len);
 	return 0;
 }
 
@@ -107,11 +129,13 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 int remove_event_from_list(struct event_elt *event)
 {
 	/* Lock is taken by the calling function */
+	pr_info("remove_event_from_list: Came here 1\n");
 	if (event == NULL) {
 		pr_err("remove_event_from_list: event is NULL\n");
 		return -1;
 	}
 
+	pr_info("remove_event_from_list: Came here 2\n");
 	if (head_ptr == NULL) {
 		pr_err("remove_event_from_list: head_ptr is NULL\n");
 		return -1;
@@ -127,9 +151,17 @@ int remove_event_from_list(struct event_elt *event)
 
 	list_del(&event->list);
 	pr_err("remove_event_from_list: going to free the event\n");
-	/*kfree(event);*/
+	//kfree(event);
 	event_q_len--;
-	pr_err("remove_event_from_list: successfully removed\n");
+	pr_err("remove_event_from_list: after removing, event_q_len=%d\n",
+			event_q_len);
+	if (event_q_len <= 0) {
+		pr_info("remove_event_from_list: len = %d, head_ptr = %x,"
+				" head_ptr_next = %x\n", event_q_len,
+				(unsigned int)head_ptr,
+				(unsigned int)head_ptr->next);
+		init_event_q();
+	}
 
 	return 0;
 }
@@ -140,26 +172,32 @@ struct event_elt *get_event_using_id(int event_id)
 	struct list_head *p;
 	struct event_elt *m;
 
+	pr_info("get_event_using_id: Came here 1\n");
 	if (event_q_len == 0) {
 		pr_err("get_event_using_id: No events in event_q\n");
 		return NULL;
 	}
 
+	pr_info("get_event_using_id: Came here 2\n");
 	if (head_ptr == NULL) {
 		pr_err("get_event_using_id: event_q head_ptr is NULL\n");
 		return NULL;
 	}
 
+	pr_info("get_event_using_id: Came here 3\n");
 	list_for_each(p, head_ptr->next) {
+		pr_info("get_event_using_id: Came here 4\n");
 		m = list_entry(p, struct event_elt, list);
 		if (m == NULL) {
 			pr_err("get_event_using_id: retrieved NULL from event q\n");
 			return NULL;
 		}
+		pr_info("get_event_using_id: Came here 5\n");
 		if (m->id == event_id) {
 			/*pr_err("get_event_using_id: found event with id");
 			pr_err(" %d: %d %d %d\n",
 				event_id, m->dx, m->dy, m->dz);*/
+			pr_info("get_event_using_id: Came here 6\n");
 			return m;
 		}
 	}
@@ -175,36 +213,45 @@ int remove_event_using_id(int event_id)
 	struct event_elt *m;
 	int ret, found = 0;
 
+	pr_info("remove_event_using_id: Came here 1\n");
 	if (event_q_len == 0) {
 		pr_err("remove_event_using_id: No events in event_q\n");
 		return -1;
 	}
 
+	pr_info("remove_event_using_id: Came here 2\n");
 	if (head_ptr == NULL) {
 		pr_err("remove_event_using_id: event_q head_ptr is NULL\n");
 		return -1;
 	}
 
+	pr_info("remove_event_using_id: Came here 3\n");
 	list_for_each(p, head_ptr->next) {
+		pr_info("remove_event_using_id: Came here 4\n");
 		m = list_entry(p, struct event_elt, list);
 		if (m == NULL) {
 			pr_err("remove_event_using_id: retrieved NULL from event q\n");
 			return -1;
 		}
+		pr_info("remove_event_using_id: Came here 5\n");
 		if (m->id == event_id) {
+			pr_info("remove_event_using_id: Came here 6\n");
 			found = 1;
 			/*pr_err("remove_event_using_id: found event with");
 			pr_err(" id %d: %d %d %d\n",
 				event_id, m->dx, m->dy, m->dz);*/
 			ret = remove_event_from_list(m);
+			pr_info("remove_event_using_id: Came here 7\n");
 			if (ret == -1)
 				return -1;
 			/*pr_err("remove_event_using_id:);
 			pr_err("successfully removed event\n");*/
+			pr_info("remove_event_using_id: Came here 8\n");
 			break;
 		}
 	}
 
+	pr_info("remove_event_using_id: Came here 9\n");
 	if (found == 0) {
 		pr_err("remove_event_using_id: No event found");
 		pr_err(" with id: %d\n", event_id);

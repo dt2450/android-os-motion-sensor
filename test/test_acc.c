@@ -221,19 +221,15 @@ int main(int argc, char **argv)
 
 	/* sleep for sometime and close the opened events after that */
 	sleep(timeout_secs);
+
 	for (i = 0; i < num_processes; i++) {
 		printf("Saved pid = %d, i = %d, event_id = %d\n",
 				child_pid_array[i], i, event_id_array[i]);
-		//handle this in system call?
-		int status;
-		pid_t result = waitpid(child_pid_array[i], &status, WNOHANG);
 
-		if (result == 0) {
-			if (syscall(__NR_accevt_destroy, event_id_array[i])
-					!= 0) {
-				printf("During destroy error: %s\n",
-						strerror(errno));
-			}
+		if (syscall(__NR_accevt_destroy, event_id_array[i])
+				!= 0) {
+			printf("During destroy error: %s\n",
+					strerror(errno));
 		}
 	}
 

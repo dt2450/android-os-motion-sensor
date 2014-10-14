@@ -87,18 +87,24 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 	struct acc_motion *currentEvent = NULL;
 	int returnVal;
 
+	pr_info("accevt_create: Came here 1\n");
 	returnVal = init_event_q();
 
+	pr_info("accevt_create: Came here 2\n");
 	if (returnVal != 0) {
 		pr_err("could not initialize queue");
 		return -EFAULT;
 	}
+	pr_info("accevt_create: Came here 3\n");
 	atomic_inc(&counter);
+	pr_info("accevt_create: Came here 4\n");
 	currentEvent = kmalloc(sizeof(struct acc_motion), GFP_KERNEL);
+	pr_info("accevt_create: Came here 5\n");
 	if (currentEvent == NULL) {
 		pr_err("error: Not enough memory!");
 		return -ENOMEM;
 	}
+	pr_info("accevt_create: Came here 6\n");
 	if (copy_from_user(currentEvent, acceleration,
 			sizeof(struct acc_motion))) {
 		pr_err("set_acceleration: copy_from_user failed.\n");
@@ -106,13 +112,16 @@ SYSCALL_DEFINE1(accevt_create, struct acc_motion __user *, acceleration)
 		return -EFAULT;
 	}
 
+	pr_info("accevt_create: Came here 7\n");
 	returnVal = add_event_to_list(currentEvent, atomic_read(&counter));
 
+	pr_info("accevt_create: Came here 8\n");
 	if (returnVal == -1) {
 		pr_err("could not add event to the event list");
 		return -EFAULT;
 	}
 	/*TODO: release write lock on event_q*/
+	pr_info("accevt_create: Came here 9\n");
 	return atomic_read(&counter);
 }
 
@@ -276,18 +285,35 @@ SYSCALL_DEFINE1(accevt_destroy, int, event_id)
 	int returnVal;
 	struct event_elt *event_to_destroy;
 
+	pr_info("accevt_destroy: Came here 1\n");
 	if (event_id <= atomic_read(&counter)) {
+		pr_info("accevt_destroy: Came here 2\n");
 		write_lock(&lock_event);
+		pr_info("accevt_destroy: Came here 3\n");
 		event_to_destroy = get_event_using_id(event_id);
+		pr_info("accevt_destroy: Came here 4\n");
 		/*waking up processes waiting on this event
 		but normal_wakeup not set hence processes will
 		not print shake detected*/
+		if (event_to_destroy == NULL) {
+			write_unlock(&lock_event);
+			pr_err("accevt_destroy: Error");
+			pr_err(" while destroying event_id: %d\n",
+					event_id);
+			return -EINVAL;
+		}
 		atomic_set(&(event_to_destroy->condition), 1);
+		pr_info("accevt_destroy: Came here 5\n");
 		wake_up_all(&__queue);
+		pr_info("accevt_destroy: Came here 6\n");
 		returnVal = remove_event_using_id(event_id);
+		pr_info("accevt_destroy: Came here 7\n");
 		write_unlock(&lock_event);
-		if (returnVal == -1)
+		if (returnVal == -1) {
+			pr_err("accevt_destroy: Could not destroy event: %d\n",
+					event_id);
 			return -EFAULT;
+		}
 		return 0;
 	}
 	return -EFAULT;
