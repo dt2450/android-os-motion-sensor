@@ -92,7 +92,7 @@ int add_event_to_list(struct acc_motion *motion, int event_id)
 
 	atomic_set(&(event->condition), 0);
 	atomic_set(&(event->normal_wakeup), 0);
-
+	atomic_set(&(event->ref_count), 0);
 
 	write_lock(&lock_event);
 	pr_info("event = %x list = %x head_ptr = %x head_ptr->next= %x\n",
