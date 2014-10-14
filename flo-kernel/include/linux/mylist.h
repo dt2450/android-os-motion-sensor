@@ -8,8 +8,7 @@ extern int delta_q_len;
 extern rwlock_t lock_delta;
 extern rwlock_t lock_event;
 
-struct delta_elt
-{
+struct delta_elt {
 	int dx;
 	int dy;
 	int dz;
@@ -18,8 +17,7 @@ struct delta_elt
 	struct list_head list;
 };
 
-struct event_elt
-{
+struct event_elt {
 	unsigned int dx;
 	unsigned int dy;
 	unsigned int dz;

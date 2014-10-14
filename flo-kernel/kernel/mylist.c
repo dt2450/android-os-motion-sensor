@@ -136,9 +136,8 @@ int remove_event_from_list(struct event_elt *event)
 	event_q_len--;
 	pr_err("remove_event_from_list: after removing, event_q_len=%d\n",
 			event_q_len);
-	if (event_q_len <= 0) {
+	if (event_q_len <= 0)
 		init_event_q(0);
-	}
 
 	return 0;
 }
