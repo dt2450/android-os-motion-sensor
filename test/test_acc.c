@@ -6,10 +6,9 @@
 #include <sys/syscall.h>
 #include <errno.h>
 
-//sjbvbvsb
-#define DEFAULT_N			10
+#define DEFAULT_N			30
 #define MAX_N				1024
-#define DEFAULT_TIMEOUT_IN_SECS		20
+#define DEFAULT_TIMEOUT_IN_SECS		30
 #define __NR_set_acceleration		378
 #define __NR_accevt_create		379
 #define __NR_accevt_wait		380
@@ -18,14 +17,6 @@
 
 static int num_processes = DEFAULT_N;
 static int timeout_secs = DEFAULT_TIMEOUT_IN_SECS;
-
-#if 0
-struct dev_acceleration {
-	int x; /* acceleration along X-axis */
-	int y; /* acceleration along Y-axis */
-	int z; /* acceleration along Z-axis */
-};
-#endif
 
 struct acc_motion {
 
@@ -155,6 +146,7 @@ int main(int argc, char **argv)
 			/* frequency is taken randomly between 1 to 20 */
 			srand(time(NULL));
 			motion->frq = (rand()%20)+1;
+			printf("frq selected: %d\n", motion->frq);
 			/* create the event with the motion*/
 			printf("Creating event syscall\n", motion->dlt_x);
 			event_id = syscall(__NR_accevt_create, motion);
