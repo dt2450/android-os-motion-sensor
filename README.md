@@ -1,5 +1,10 @@
-  FILES SUBMITTED
-===================
+
+# Authors:
+- Devashi Tandon
+- Pratyush Parimal
+- Lawrence Candes
+
+# FILES SUBMITTED
 
 - flo-kernel/arch/arm/kernel/calls.S: system call entries.
 - flo-kernel/arch/arm/include/asm/unistd.h: declaraing constants for syscall numbers.
@@ -16,8 +21,7 @@
 - test/test_acc.c: main test program that spawns children, creates events, goes to wait, and prints if shakes are detected or not on wakeup.
 
 
-  TESTS
-=========
+# TESTS
 
 Setting acceleration values inside the kernel:
 ---------------------------------------------
@@ -36,7 +40,7 @@ Sending acceleration values to the kernel and checking if they satisfy events:
 For this we use 'daemon_part3'. it keeps calling signal syscall after every 200ms, and sends the x,y,z values and puts the computed delta values in a queue. It also computes the list of deltas for x,y & z. It then iterates the list of events to check if any of them have occurred, upon which it sets their 'condition' as 1.
 
 
-  REFERENCES
-==============
+# REFERENCES
+
 1. http://tuxthink.blogspot.com/2014/07/creating-queue-in-linux-kernel-using.html
 2. http://lwn.net/Articles/22913/
