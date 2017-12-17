@@ -1,52 +1,193 @@
-The goal of this assignment is to make a new linux scheduler, a Grouped Round-Robin. As a first step, you are to implement a simple round robin scheduler in part 1, and add group features in part 2.
+The kernel programming for this assignment will be done using a Google Nexus 7 (2013) The Android platform can run on many different architectures, but the specific platform we will be targeting is the ARM CPU family. The Google Nexus 7 uses an ARMv7 CPU. The Android emulator can also be used and is built on a system called QEMU which emulates an ARMv7 processor. However, to use the emulator, you will have to use a new emulator that we have provided to simulate accelerator devices that you will use for this assignment. In your team's git repository in the utils directory, there is a custom emulator that you should install in your VM to run with your kernel:
+sudo apt-get install libsdl1.2debian:i386
+cp emulator-hmwk3 ~/utils/android-sdk-linux/tools/ # copy binary once
+emulator-hmwk3 -avd NameOfYourAVD -kernel ../flo-kernel/arch/arm/boot/zImage -show-kernel
+(5 pts.) Install a custom kernel on your Nexus 7
+Make sure you still have the Android SDK unpacked in your home directory on the VM as specified by Homework 2. 
 
-  (30 pts.) A Multicore Round-Robin Scheduler
-Add a new scheduling policy to the Linux kernel to support round-robin scheduling. Call this policy GRR. The algorithm should run in constant time and work as follows:
-The new scheduling policy should serve as the default scheduling policy for init and all of its descendants.
-Multicore systems, like the Nexus 7, must be fully supported.
-Every task has the same time slice (quantum), which is 100ms.
-When deciding which CPU a task should be assigned to, it should be assigned to the CPU with the smallest total number of tasks in the CPU's run queue.
-Periodic load balancing should be implemented such that a single job from the run queue with the highest total number of tasks should be moved to the run queue with the lowest total number of tasks. The job that should be moved is the first eligible job in the run queue which can be moved without causing the imbalance to reverse. Jobs that are currently running are not eligible to be moved and some jobs may have restrictions on which CPU they can be run on. Load balancing should be attempted every 500ms for each CPU; you may assume for load balancing that the CPUs receive periodic timer interrupts.
-The Linux scheduler implements individual scheduling classes corresponding to different scheduling policies. For this assignment, you need to create a new scheduling class, sched_grr_class, for the GRR policy, and implement the necessary functions in kernel/sched/grr.c. You can find some good examples of how to create a scheduling class in kernel/sched/rt.c and kernel/sched/fair.c. Other interesting files that will help you understand how the Linux scheduler works are kernel/sched/core.c and include/linux/sched.h. While there is a fair amount of code in these files, a key goal of this assignment is for you to understand how to abstract the scheduler code so that you learn in detail the parts of the scheduler that are crucial for this assignment and ignore the parts that are not.
-Your scheduler should operate alongside the existing Linux scheduler. Therefore, you should add a new scheduling policy, SCHED_GRR. The value of SCHED_GRR should be 6. SCHED_GRR should be made the default scheduler class of init.
-Only tasks whose policy is set to SCHED_GRR should be considered for selection by your new scheduler.
-Tasks using the SCHED_GRR policy should take priority over tasks using the SCHED_NORMAL policy, but not over tasks using the SCHED_RR or SCHED_FIFO policies.
-Your scheduler must be capable of working on both uniprocessor systems (like the emulator) and multicore/multiprocessor systems (like the Nexus 7). All cores should be utilized on multiprocessor systems.
-Proper synchronization and locking is crucial for a multicore scheduler, but not easy. Pay close attention to the kind of locking used in existing kernel schedulers.
-For a more responsive system, you may want to set the scheduler of kernel threads to be SCHED_GRR as well (otherwise, SCHED_GRR tasks can starve the SCHED_NORMAL tasks to a degree). To do this, you can modify kernel/kthread.c and replace SCHED_NORMAL with SCHED_GRR. You don't have to though, this is not a requirement.
-  (30 pts.) An Android group scheduler
-Round-robin scheduling treats all tasks equally, but there are times when it is desirable to give some tasks preference over others. In Android, tasks are classified into different groups so that different task groups can be treated different. Modify your scheduler from Part 1 to add group scheduling features that can be used by Android.
-Android 4.4 has three groups of tasks: system group, foreground group, background group. Typically, Android tasks are assigned to the foreground or background group, and kernel threads are in the system group. From user level, you can run ps -P on the device or emulator to check the assigned groups for each task. To get information for a specific pid, you can run cat /proc/{pid}/cgroup. Observe the change of a task's group when you launch an app and go back to the launcher by pressing the home button. The add_tid_to_cgroup function in this file will help you to understand how Android set tasks to each group. At the kernel level, a task's group information can be found using a task pointer. Refer to the line 136 in kernel/sched/debug.c and use it appropriately. The return value will be "/" for a system group, "/apps" for a foreground group, "/apps/bg_non_interactive" for a background group. Whenever Android changes the group of a task, cpu_cgroup_attach function in kernel/sched/core.c will be called.
+The kernel source is located in your team's git repository in the flo-kernel directory, and an appropriate cross-compiler has been installed in the VM, and resides in the /home/w4118/utils directory. In this homework, there are two configurations that can be used to complete the assignment - one configuration for the emulator, and one configuration for the device (these two devices have different [virtual] hardware and thus require different drivers enabled/disabled). To switch between the two is straight-forward using the kernel's default configuration mechanism. To compile for the Nexus 7 device, use the custom flo_android default configuration:
+make ARCH=arm flo_defconfig
+To compile for the emulator, use the goldfish default configuration:
+make ARCH=arm goldfish_armv7_defconfig
 
-In this assignment, you will introduce group scheduling using two groups, a foreground group and a background group, and adjust the number of CPU cores assigned to each group to change their performance characteristics:
+These commands configure the Makefiles in the kernel to include all the proper drivers / support for the chosen platform. After you have configured the kernel (which is only necessary when switching between emulator and device), you can compile the kernel for Nexus 7 using:
+make ARCH=arm CROSS_COMPILE=arm-eabi-
+To compile the kernel for the goldfish emulator, you can use:
+make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi-
 
-Two groups exist in this scheduler: a foregound and a background group. Your scheduler should treat Android's system and foreground groups together as the foreground group, and Android's background group as the background group.
-Tasks either belong to foreground or background group, and each group of tasks run on dedicated set of cores. Android framework sets tasks as foreground or background according to the status of an app. Some more explanation is found below.
-At the beginning by default, half of cores are configured to run foreground tasks and the other half of cores are configured to run background tasks. In the case of uniprocessor systems, a core can run both of foreground tasks and background tasks. Assigning some number of cores to specific group will be made possible at runtime via a system call sched_set_CPUgroup which you are to implement. Note that for SMP/multicore, at least one CPU should be always be assigned to each group.
-When a task becomes runnable, it should be assigned to the core that is least busy, which is the one with the shortest runqueue.
-If a core has nothing to do, try to steal a task from another core in the same group. If there is nothing to steal, let the core remain idle.
-Periodic load balancing is done within cores dedicated to the same group with the current core.
+Modifications to the configuration can be done using:
+make ARCH=arm menuconfig
+however, these changes do not get saved into the default configuration, so if you modify the kernel config and then use one of the default configuration commands, your custom changes will be erased! 
 
-Assigning CPUs to group:
-For assigning CPUs to a group, you are to implement the following system call:
-#define FOREGROUND 1
-#define BACKGROUND 2
+The final kernel image (after compilation) is output to: arch/arm/boot/zImage. This file is the one you will be using to boot either the Nexus 7 or the emulator. 
 
-/* This system call will assign numCPU to the given group,
- * and assign (totalCPU - numCPU) to the other group.
- * System call number 378.
- */ 
-int sched_set_CPUgroup(int numCPU, int group);
+Booting the kernel on the Nexus 7 requires the fastboot utility, which has been provided in your class VM. This utility can boot a custom kernel on the device, and can also flash the custom kernel into the device's boot partition. Here are the steps you must follow in order to set up your environment and successfully boot a new kernel on your Nexus 7:
 
-Only the administrator (root user) may adjust CPU configuration using sched_setCPUgroup(). The system call should handle all errors appropriately. (e.g. assigning 0 CPU to any of the groups) The system call should be implemented in kernel/sched/core.c. 
-  (10 pts.) Investigate and Demo
-Demonstrate that your scheduler works with Android apps and show how changing the number of CPUs assigned to the foreground and background groups affects app performance. For example, for a given workload, what happens if you assign 3 CPUs to the foreground group versus assigning 1 CPU to the foreground group? If you assign 3 CPUs vs 1 CPU to the foreground group, does the foreground app run 3 times as fast? Why or why not? What qualitative difference in performance do you see when running a workload with different CPU configurations? Using a benchmark app is a good idea. You should download apps from Google Play as needed and try running different mixes of those apps. Geekbench and Quadrant are popular benchmarks, however feel free to use any apps which may be useful to show any performance difference. Many Android apps normally stop running when they are in the background, so you will need to select your apps carefully to demonstrate the impact of scheduling. Some apps you might consider for running in the background include the Pi benchmark and some anti-virus apps. How does your scheduler compare to the default Android scheduler in terms of qualitative performance? Are there any scenarios in which there are visible performance differences?
-You should provide a complete set of results that describe your experiments and be prepared to demonstrate those scheduling scenarios to the TAs. Your results and any explanations should be put in the written file in the root of your team's hmwk4 repository. The writeup should be of sufficient detail for someone else to be able to repeat your experiments.
+Copy the file from your team's git repository in utils/51-android.rules to the path /etc/udev/rules.d/ of your VM, change its permission to be both readable and accessible, then type the following command to acquire the permission to access your device.
+sudo service udev restart
+Put the device into "fastboot" mode by holding down the lower key while powering-up the device. Alternatively, you can type "adb reboot bootloader" in your VM if you have enabled USB Debugging. You will know that the device has successfully been placed in "fastboot" mode when the screen shows a green android.
+NOTE: You have to enable USB debugging on your device before you connect it to the VM. Go to "Settings->About tablet" on your Nexus 7 device. Tap on the icon "Build number" at least seven times to enable "Developers Options". When it's enabled, go back to "Settings->Developer Options". Make sure you check the "USB debugging" option. Next, connect your Nexus 7 USB device to the VM (go to settings on your VMware product and connect to your USB device). Then type "adb devices" to see if the device is connected.
 
-Additional Hints/Tips
+Once the device is in "fastboot" mode, check the connection to the VM with:
+fastboot devices
+If you see a line which looks like:
+HT851N002807 fastboot
+then you are ready for the subsequent steps.
+Unlock your device and flash the Android 4.4.4 factory image on it. Unlocking is a one-time process. Type the following command in fastboot mode to unlock your bootloader.
+fastboot oem unlock
+Then download an Android 4.4.4 factory image and unpack the file:
+wget https://dl.google.com/dl/android/aosp/razor-ktu84p-factory-b1b2c0da.tgz
+tar -zxvf razor-ktu84p-factory-b1b2c0da.tgz
+Go to the newly created directory, and execute the script flash-all.sh. After a while, you will see your device boots up with Android Kitkat 4.4.4. Go to "Settings->About tablet" on your Nexus 7 to verify the version number.
+To boot your custom kernel (and leave the existing kernel in-place for subsequent reboots of the device), set the device to fastboot mode and then go to the directory utils in your team's git repository to run the update-kernel-ram.sh script:
+./update-kernel-ram.sh ../flo-kernel/arch/arm/boot/zImage
+The device should eventually boot up with your new kernel.
+To write the new kernel image into the boot partition of the device's flash memory, use the following fastboot command: 
+./update-kernel-flash.sh ../flo-kernel/arch/arm/boot/zImage
+This will allow your system to boot the new kernel after a power-cycle. 
+BE CAREFUL THOUGH - YOU WILL WANT TO ENSURE SYSTEM STABILITY BEFORE COMMITTING YOUR WORK TO FLASH!
+(10 pts.) Write a user-space daemon to pass device acceleration into the kernel
+On the Android platform, the accelerometer provides a three dimensional vector indicating the direction and magnitude of acceleration. When the device is sitting on a table, the accelerometer reads a magnitude of g = 9.81 m/s^2. Similarly, when the device is in free fall and therefore rapidly accelerating toward the ground at 9.81 m/s^2, the accelerometer reads a magnitude of g = 0 m/s^2. However, floating point operation is not well supported in kernel, so the acceleration values can instead be scaled by a factor of 100 with any remaining fraction ignored. For example, a value of -9.54 can be converted to -954.
 
-Kernel / Scheduler Hacking:
+You are to write a daemon process, called accelerate_d, which polls the accelerometer and writes it to the kernel. You will write a system call defined below that writes the accelerometer data to the kernel. You do not need to keep track of any history, so subsequent calls to the system call will overwrite the accelerometer data in the kernel. You should not make your CPU busy reading the device, so you are required to make the daemon intermittent. For example, you can add a timer or make the daemon pause using usleep. Define the time interval in your daemon program file.
 
-You may want to refrain from immediately making your scheduler the default scheduler for init and instead, test by manually configuring tasks to use your policy with sched_setscheduler().
-When debugging kernel crashes on the device, once the device reboots after a crash, the kernel log from that crash will exist in /proc/last_kmsg (provided it was a soft reboot). Consider booting the device with your custom kernel using fastboot boot instead of flashing the new kernel. Then if it crashes, it will reboot into a stable kernel and you can view last_kmsg.
-For this homework, the default kernel configurations for both the emulator and the device have been updated to include debugfs, and some basic scheduler debugging. These tools can be of great value as you work on this assignment. Debugfs documentation can be found here, and scheduler debugging information can be found in /proc/sched_debug and /proc/schedstat. You can also search through the code for SCHED_DEBUG and SCHEDSTATS - you may want to add something while you debug! debugfs can be mounted with mount -t debugfs none /sys/kernel/debug if not already mounted.
+Use the system call interface below:
+
+/*
+ *Define time interval (ms)
+ */
+ 
+#define TIME_INTERVAL  200
+
+/*
+ * Set current device acceleration in the kernel.
+ * The parameter acceleration is the pointer to the address
+ * where the sensor data is stored in user space.  Follow system call
+ * convention to return 0 on success and the appropriate error value
+ * on failure. 
+ * syscall number 378
+ */
+ 
+int set_acceleration(struct dev_acceleration __user * acceleration);
+
+/*
+ * The guide on how to get an instance of the default acceleration
+ * sensor is available here.
+ */
+
+/*
+ * The data structure to be used for passing accelerometer data to the
+ * kernel and storing the data in the kernel.
+ */
+
+struct dev_acceleration {
+	int x; /* acceleration along X-axis */
+	int y; /* acceleration along Y-axis */
+	int z; /* acceleration along Z-axis */
+}; 
+
+Only the administrator (root user) should be able to update the device accelerometer. All related functions should be placed in kernel/acceleration.c, and include/linux/acceleration.h 
+
+A basic command-line daemon project has been provided in your homework repository under the acceleration_d directory, which consists of:
+accelerationd.c: the main function of the deamon process resides and the implementation of polling sensor data.
+acceleration.h: define dev_acceleration structure
+inc/: sensor data output and polling interface is defined in hardware/sensor.h
+akm8975.h: device driver headfile
+While this project provides a basic template for you as a starting point, you will probably need to modify accelerationd.c and acceleration.h. Please see the comments in accelerationd.c to see where you may want to make modifications. To add files to the project, edit the Makefile and add lines to the SOURCES variable. Please do not remove any of the existing source files.
+
+To compile the program simply type make. To install the program on the device (or emulator) type make install_dev (or make install_emu). To run on the device (or emulator) type make run_dev (or make run_emu). 
+
+NOTE:
+This must be a true daemon i.e. it should place itself in the background using a call to fork() as opposed to forcing the program into the background using shell techniques such as the & symbol or the Ctrl-Z, bg command sequence. 
+(45 pts.) Acceleration based Synchronization Primitive
+Design and implement a new kernel synchronization primitive based on acceleration. Shaking is a well known gesture based on the accelerometer. It can be detected via an acceleration difference within some time interval along a coordinate axis. For example, whether the phone is being shaken (not stirred!) in a horizontal or vertical fashion could be read from acceleration changes along the X-axis and Y-axis. A shake may also cause acceleration changes along multiple axes.
+
+To detect shakes properly, it is important to avoid tiny accidental movements that should not be considered shakes, and avoid having accelerations in different directions canceling each other out. In this homework, monitoring a device shake requires the following steps. First, you will need to buffer sensor data in the kernel to calculate the difference between every two successive accelerations for some number of accelerations. The difference between successive accelerations is called a movement or sample. Second, you will need to analyze a WINDOW of samples to determine how many of them have a strength that exceed a NOISE value. The strength of a movement is computed by summing the acceleration changes aggregated along all three x, y, and z dimensions. A certain number of movements within a WINDOW, each of which has strength greater than NOISE, are considered a Motion. Since acceleration data is generated at each TIME_INTERVAL as described in Problem 2 of this assignment, WINDOW is defined in terms of the number of TIME_INTERVALS. Note that although TIME_INTERVAL is defined as 200 ms in Problem 2, it is possible that you may find it useful to change the TIME_INTERVAL to detect shakes better based on your actual experience with your device.
+
+Your kernel synchronization primitive should respond to shake motion events that exceed some baseline. A shake motion event is defined based on having a number of movements, acceleration differences, that are not considered noise and occur with enough frequency within some window of time. Your primitive will allow processes to wait on any shake motion events occurring that exceed some baseline, then wake up when such events occur. For example, a process might be waiting for a shake motion event where the movement along the x-axis is greater than 5 and the number of qualified movements exceeds 3.
+
+The API for this synchronization mechanism is the following set of new system calls which you will implement:
+
+/*Define the noise*/
+#define NOISE 10
+
+/*Define the window*/
+#define WINDOW 20
+
+/*
+* Define the motion.
+* The motion give the baseline for an EVENT.
+*/
+struct acc_motion {
+
+     unsigned int dlt_x; /* +/- around X-axis */
+     unsigned int dlt_y; /* +/- around Y-axis */
+     unsigned int dlt_z; /* +/- around Z-axis */
+     
+     unsigned int frq;   /* Number of samples that satisfies:
+                          sum_each_sample(dlt_x + dlt_y + dlt_z) > NOISE */
+};
+     
+
+/* Create an event based on motion.  
+ * If frq exceeds WINDOW, cap frq at WINDOW.
+ * Return an event_id on success and the appropriate error on failure.
+ * system call number 379
+ */
+ 
+ int accevt_create(struct acc_motion __user *acceleration);
+ 
+/* Block a process on an event.
+ * It takes the event_id as parameter. The event_id requires verification.
+ * Return 0 on success and the appropriate error on failure.
+ * system call number 380
+ */
+ 
+ int accevt_wait(int event_id);
+ 
+ 
+/* The acc_signal system call
+ * takes sensor data from user, stores the data in the kernel,
+ * generates a motion calculation, and notify all open events whose
+ * baseline is surpassed.  All processes waiting on a given event 
+ * are unblocked.
+ * Return 0 success and the appropriate error on failure.
+ * system call number 381
+ */
+ 
+ int accevt_signal(struct dev_acceleration __user * acceleration);
+
+/* Destroy an acceleration event using the event_id,
+ * Return 0 on success and the appropriate error on failure.
+ * system call number 382
+ */
+ 
+ int accevt_destroy(int event_id);
+You should begin by thinking carefully about the data structures that you will need to solve this problem. Your system will need to support having multiple processes blocking on different shake motions at the same time, so you will probably need a set of range descriptor data structures, each of which identifies an event. Those data structures will need to be put in a list from which your code can find the appropriate descriptor corresponding to the accelerating changing range that you need. Space for the descriptors should be dynamically allocated, most likely using the kernel functions kmalloc() and kfree().
+
+You should not make any assumptions about whether the system is a uniprocessor or multiprocessor system. Be sure to properly synchronize access to your data structures. Moreover, be sure to select the appropriate synchronization primitives such that they are both correct and efficient, in this order. For instance, you should prefer a spinlock over a semaphore if-and-only-if you don't plan to sleep while holding it. You should understand the producer-consumer problem and what you need to do to synchronize access to a buffer in the kernel. You may find it helpful to use the kernal structure kfifo.
+
+You can choose to work at the level of wait queues using either the associated low-level routines such as add_wait_queue(), remove_wait_queue(), or the higher-level routines such as prepare_to_wait(), finish_wait(). You can find code examples both in the book (pages 58 - 61 of Linux Kernel Development) and in the kernel. If you prefer to use functions such as interruptible_sleep_on() and sleep_on(), then plan carefully because they can be racy in certain circumstances.
+
+HINT: a useful method to guarantee the validity of a data structure in the presence of concurrent create, access and delete operations, is to maintain a reference count for the object. Then, the object should only be freed by the last user. The file system, for example, keeps a reference count for inodes: when a process opens a file the reference count of the inode is incremented. Thus if another process deletes the file, the inode remains valid in the system (albeit invisible) because its count is positive. The count is decremented when the process closes the corresponding file descriptor, and if it reaches zero then the inode is freed. A reference count must be protected against concurrent access, either using explicit synchronization or using atomic types (see atomic_t in Chapter 10 of the Linux Kernel Development book).
+
+You should properly handle any errors that may occur and report meaningful error codes e.g. -ENOMEM in the event a memory allocation fails. As always, you are encouraged to look for existing kernel code that performs similar tasks and follow the coventions and practices it provides.
+
+  (10 pts.) Write a C program to test the system
+Shake or not: Different applications have different sensitivity to the shaken motion. For example, some applications are sensitive to verticle shaking, some are sensitive to horizon shaking, and others are sensitive to both of them. Define these three categories. Forks N children and assign sensitivity to them. Each of them are reponsible to detect a shaking motion with its sensitivity.
+
+Print "%d detected a vertical shake"
+
+Print "%d detected a horizonal shake"
+
+Print "%d detected a shake"
+
+%d should be replace by the process identifier of the respective child. When an event is notified, all processes waiting on the event should be unblocked. If there are no processes waiting on the event, then nothing happens. 
+The original test process should wait for some period of time (>= 60 seconds), then close all child processes by closing the opened event (not by sending a signal or other such method). Make obvious the shaking needed to trigger the respective event!
+
+
+Testing on the Emulator:
+Install the sensorsim binary, found in the acceleration_d directory in your team's git repository, into the emulator using:
+adb -e remount
+adb -e push sensorsim /system/bin
+After starting the emulator, you can simulate hardware sensor events using the sensorsim binary. The program will prompt you for a Sensor ID, enter 0.
